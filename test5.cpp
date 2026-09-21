@@ -14,6 +14,7 @@
 // Остальная логика test4.cpp не изменяется.
 
 #include <algorithm>
+#include <array>
 #include <charconv>
 #include <chrono>
 #include <deque>
@@ -28,7 +29,7 @@
 struct Row {
     std::string name;
     std::string date;
-    double value;
+    std::array<double, 7> values{};
 };
 
 std::vector<std::ifstream> openDataFiles() {
@@ -71,17 +72,23 @@ std::vector<Row> parseFilterMergeFiles(std::vector<std::ifstream>& files, const 
             std::string_view date(line.data() + second + 1, third - second - 1);
             std::string_view key(line.data() + first + 1, third - first - 1);
 
-            double value;
-            std::from_chars(line.data() + third + 1, line.data() + line.size(), value);
+            std::array<double, 7> values{};
+            std::size_t valueStart = third + 1;
+
+            for (int i = 0; i < 7; ++i) {
+                const std::size_t valueEnd = i == 6 ? line.size() : line.find(',', valueStart);
+                std::from_chars(line.data() + valueStart, line.data() + valueEnd, values[i]);
+                valueStart = valueEnd + 1;
+            }
 
             auto it = positions.find(key);
 
             if (it == positions.end()) {
                 storedKeys.emplace_back(key);
                 positions.emplace(std::string_view(storedKeys.back()), mergedRows.size());
-                mergedRows.push_back({std::string(name), std::string(date), value});
+                mergedRows.push_back({std::string(name), std::string(date), values});
             } else {
-                mergedRows[it->second].value += value;
+                for (int i = 0; i < 7; ++i) mergedRows[it->second].values[i] += values[i];
             }
         }
     }
@@ -100,19 +107,19 @@ void sortRows(std::vector<Row>& rows) {
 }
 
 void printRows(const std::vector<Row>& rows) {
-    std::cout << "string,date,float64\n";
+    std::cout << "string,date,float64_1,float64_2,float64_3,float64_4,float64_5,float64_6,float64_7\n";
 
     for (const auto& row : rows) {
-        std::cout << row.name << "," << row.date << "," << row.value << "\n";
+        std::cout << row.name << "," << row.date; for (double value : row.values) std::cout << "," << value; std::cout << "\n";
     }
 }
 
 void saveRows(const std::vector<Row>& rows, const std::string& outputFilename) {
     std::ofstream outputFile(outputFilename);
-    outputFile << "string,date,float64\n";
+    outputFile << "string,date,float64_1,float64_2,float64_3,float64_4,float64_5,float64_6,float64_7\n";
 
     for (const auto& row : rows) {
-        outputFile << row.name << "," << row.date << "," << row.value << "\n";
+        outputFile << row.name << "," << row.date; for (double value : row.values) outputFile << "," << value; outputFile << "\n";
     }
 }
 
@@ -164,20 +171,3 @@ int main() {
 // $Env:PATH += ";C:\\msys64\\ucrt64\\bin"
 // g++ -std=c++17 -O2 test5.cpp -o build/test5.exe && build/test5.exe
 
-// --- TIME ---
-// Open:               0.5966 ms
-// Parse+Filter+Merge: 323.881 ms
-// Sort:               0.6291 ms
-// Processing:         325.107 ms
-
-// --- TIME ---
-// Open:               0.6093 ms
-// Parse+Filter+Merge: 172.535 ms
-// Sort:               0.0927 ms
-// Processing:         173.237 ms
-
-// --- TIME ---
-// Open:               0.5849 ms
-// Parse+Filter+Merge: 164.73 ms
-// Sort:               0.0975 ms
-// Processing:         165.413 ms
