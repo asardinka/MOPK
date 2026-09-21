@@ -68,7 +68,7 @@ bool generateCSV(const std::string& filename, int rowCount, std::mt19937& rng) {
 
     std::uniform_int_distribution<size_t> nameDist(0, names.size() - 1);
     std::uniform_int_distribution<size_t> dateDist(0, dates.size() - 1);
-    std::uniform_real_distribution<double> doubleDist(0.0, 1000.0);
+    std::uniform_real_distribution<double> doubleDist(0.0, 1.0);
 
     for (int i = 1; i <= rowCount; ++i) {
         const std::string& randomName = names[nameDist(rng)];
@@ -96,3 +96,6 @@ int main() {
 
     return 0;
 }
+
+// $Env:PATH += ";C:\msys64\ucrt64\bin"
+// g++ -std=c++17 make_csv.cpp -o build/make_csv.exe && build/make_csv.exe

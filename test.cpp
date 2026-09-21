@@ -68,11 +68,7 @@ std::vector<Row> parseFiles(std::vector<std::ifstream>& files) {
     return rows;
 }
 
-std::vector<Row> filterByDate(
-    const std::vector<Row>& rows,
-    const std::string& startDate,
-    const std::string& endDate
-) {
+std::vector<Row> filterByDate(const std::vector<Row>& rows,const std::string& startDate,const std::string& endDate) {
     std::vector<Row> filteredRows;
 
     for (const auto& row : rows) {
@@ -110,11 +106,8 @@ std::vector<MergedRow> mergeByNameAndDate(const std::vector<Row>& rows) {
 }
 
 void sortRows(std::vector<MergedRow>& rows) {
-    std::sort(
-        rows.begin(),
-        rows.end(),
-        [](const MergedRow& left, const MergedRow& right) {
-            if (left.name != right.name) {
+    std::sort(rows.begin(),rows.end(), [](const MergedRow& left, const MergedRow& right) {
+            if (left.name != right.name){ 
                 return left.name < right.name;
             }
 
@@ -123,10 +116,7 @@ void sortRows(std::vector<MergedRow>& rows) {
     );
 }
 
-void outputRows(
-    const std::vector<MergedRow>& rows,
-    const std::string& outputFilename
-) {
+void outputRows(const std::vector<MergedRow>& rows,const std::string& outputFilename) {
     std::ofstream outputFile(outputFilename);
 
     std::cout << "string,date,float64\n";
@@ -155,7 +145,9 @@ int main() {
 
     // 1. Open all data*.csv files.
     const auto openStart = Clock::now();
+
     std::vector<std::ifstream> files = openDataFiles();
+    
     const auto openEnd = Clock::now();
 
     // 2. Parse all rows.
@@ -165,14 +157,12 @@ int main() {
 
     // 3. Filter rows by date.
     const auto filterStart = Clock::now();
-    std::vector<Row> filteredRows =
-        filterByDate(rows, startDate, endDate);
+    std::vector<Row> filteredRows = filterByDate(rows, startDate, endDate);
     const auto filterEnd = Clock::now();
 
     // 4. Merge by name + date and sum values.
     const auto mergeStart = Clock::now();
-    std::vector<MergedRow> mergedRows =
-        mergeByNameAndDate(filteredRows);
+    std::vector<MergedRow> mergedRows = mergeByNameAndDate(filteredRows);
     const auto mergeEnd = Clock::now();
 
     // 5. Sort by name, then by date.
@@ -189,22 +179,14 @@ int main() {
 
     const auto programEnd = Clock::now();
 
-    const double openMs =
-        std::chrono::duration<double, std::milli>(openEnd - openStart).count();
-    const double parseMs =
-        std::chrono::duration<double, std::milli>(parseEnd - parseStart).count();
-    const double filterMs =
-        std::chrono::duration<double, std::milli>(filterEnd - filterStart).count();
-    const double mergeMs =
-        std::chrono::duration<double, std::milli>(mergeEnd - mergeStart).count();
-    const double sortMs =
-        std::chrono::duration<double, std::milli>(sortEnd - sortStart).count();
-    const double outputMs =
-        std::chrono::duration<double, std::milli>(outputEnd - outputStart).count();
-    const double processingMs =
-        std::chrono::duration<double, std::milli>(processingEnd - programStart).count();
-    const double totalMs =
-        std::chrono::duration<double, std::milli>(programEnd - programStart).count();
+    const double openMs = std::chrono::duration<double, std::milli>(openEnd - openStart).count();
+    const double parseMs = std::chrono::duration<double, std::milli>(parseEnd - parseStart).count();
+    const double filterMs = std::chrono::duration<double, std::milli>(filterEnd - filterStart).count();
+    const double mergeMs = std::chrono::duration<double, std::milli>(mergeEnd - mergeStart).count();
+    const double sortMs = std::chrono::duration<double, std::milli>(sortEnd - sortStart).count();
+    const double outputMs = std::chrono::duration<double, std::milli>(outputEnd - outputStart).count();
+    const double processingMs = std::chrono::duration<double, std::milli>(processingEnd - programStart).count();
+    const double totalMs = std::chrono::duration<double, std::milli>(programEnd - programStart).count();
 
     std::cout << "\n--- TIME ---\n";
     std::cout << "Open:       " << openMs << " ms\n";
@@ -218,3 +200,18 @@ int main() {
 
     return 0;
 }
+
+
+
+// $Env:PATH += ";C:\msys64\ucrt64\bin"
+// g++ -std=c++17 test.cpp -o build/test.exe && build/test.exe
+
+// --- TIME ---
+// Open:       0.9552 ms
+// Parse:      1783.66 ms
+// Filter:     115.659 ms
+// Merge:      89.1253 ms
+// Sort:       0.6718 ms
+// Output:     105.142 ms
+// Processing: 1990.08 ms
+// Total:      2095.22 ms
