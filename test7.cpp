@@ -44,7 +44,7 @@ const std::array<std::string_view, 10> dates = {
 };
 
 struct Result {
-    std::array<std::array<double, 10>, 50> sums{};
+    std::array<std::array<std::array<double, 7>, 10>, 50> sums{};
     std::array<std::array<bool, 10>, 50> used{};
 };
 
@@ -90,10 +90,16 @@ Result parseFilterMergeFiles(std::vector<std::ifstream>& files, const std::strin
             const std::size_t nameId = nameIt - names.begin();
             const std::size_t dateId = dateIt - dates.begin();
 
-            double value;
-            std::from_chars(line.data() + third + 1, line.data() + line.size(), value);
+            std::size_t valueStart = third + 1;
 
-            result.sums[nameId][dateId] += value;
+            for (int i = 0; i < 7; ++i) {
+                const std::size_t valueEnd = i == 6 ? line.size() : line.find(',', valueStart);
+                double value;
+                std::from_chars(line.data() + valueStart, line.data() + valueEnd, value);
+                result.sums[nameId][dateId][i] += value;
+                valueStart = valueEnd + 1;
+            }
+
             result.used[nameId][dateId] = true;
         }
     }
@@ -102,12 +108,12 @@ Result parseFilterMergeFiles(std::vector<std::ifstream>& files, const std::strin
 }
 
 void printRows(const Result& result) {
-    std::cout << "string,date,float64\n";
+    std::cout << "string,date,float64_1,float64_2,float64_3,float64_4,float64_5,float64_6,float64_7\n";
 
     for (std::size_t nameId = 0; nameId < names.size(); ++nameId) {
         for (std::size_t dateId = 0; dateId < dates.size(); ++dateId) {
             if (result.used[nameId][dateId]) {
-                std::cout << names[nameId] << "," << dates[dateId] << "," << result.sums[nameId][dateId] << "\n";
+                std::cout << names[nameId] << "," << dates[dateId]; for (double value : result.sums[nameId][dateId]) std::cout << "," << value; std::cout << "\n";
             }
         }
     }
@@ -115,12 +121,12 @@ void printRows(const Result& result) {
 
 void saveRows(const Result& result, const std::string& outputFilename) {
     std::ofstream outputFile(outputFilename);
-    outputFile << "string,date,float64\n";
+    outputFile << "string,date,float64_1,float64_2,float64_3,float64_4,float64_5,float64_6,float64_7\n";
 
     for (std::size_t nameId = 0; nameId < names.size(); ++nameId) {
         for (std::size_t dateId = 0; dateId < dates.size(); ++dateId) {
             if (result.used[nameId][dateId]) {
-                outputFile << names[nameId] << "," << dates[dateId] << "," << result.sums[nameId][dateId] << "\n";
+                outputFile << names[nameId] << "," << dates[dateId]; for (double value : result.sums[nameId][dateId]) outputFile << "," << value; outputFile << "\n";
             }
         }
     }
@@ -167,17 +173,3 @@ int main() {
 // $Env:PATH += ";C:\\msys64\\ucrt64\\bin"
 // g++ -std=c++17 -O2 test7.cpp -o build/test7.exe && build/test7.exe
 
-// --- TIME ---
-// Open:                    0.5548 ms
-// Parse+Filter+Merge+Sort: 350.289 ms
-// Processing:              350.844 ms
-
-// --- TIME ---
-// Open:                    0.5689 ms
-// Parse+Filter+Merge+Sort: 175.399 ms
-// Processing:              175.968 ms
-
-// --- TIME ---
-// Open:                    0.7458 ms
-// Parse+Filter+Merge+Sort: 174.295 ms
-// Processing:              175.041 ms
