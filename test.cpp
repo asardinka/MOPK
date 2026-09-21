@@ -14,11 +14,6 @@ struct Row {
     double value;
 };
 
-struct MergedRow {
-    std::string name;
-    std::string date;
-    double value;
-};
 
 std::vector<std::ifstream> openDataFiles() {
     std::vector<std::ifstream> files;
@@ -73,8 +68,8 @@ std::vector<Row> filterByDate(const std::vector<Row>& rows, const std::string& s
     return filteredRows;
 }
 
-std::vector<MergedRow> mergeByNameAndDate(const std::vector<Row>& rows) {
-    std::vector<MergedRow> mergedRows;
+std::vector<Row> mergeByNameAndDate(const std::vector<Row>& rows) {
+    std::vector<Row> mergedRows;
     std::unordered_map<std::string, std::size_t> positions;
 
     for (const auto& row : rows) {
@@ -92,8 +87,8 @@ std::vector<MergedRow> mergeByNameAndDate(const std::vector<Row>& rows) {
     return mergedRows;
 }
 
-void sortRows(std::vector<MergedRow>& rows) {
-    std::sort(rows.begin(), rows.end(), [](const MergedRow& left, const MergedRow& right) {
+void sortRows(std::vector<Row>& rows) {
+    std::sort(rows.begin(), rows.end(), [](const Row& left, const Row& right) {
         if (left.name != right.name) {
             return left.name < right.name;
         }
@@ -102,7 +97,7 @@ void sortRows(std::vector<MergedRow>& rows) {
     });
 }
 
-void printRows(const std::vector<MergedRow>& rows) {
+void printRows(const std::vector<Row>& rows) {
     std::cout << "string,date,float64\n";
 
     for (const auto& row : rows) {
@@ -110,7 +105,7 @@ void printRows(const std::vector<MergedRow>& rows) {
     }
 }
 
-void saveRows(const std::vector<MergedRow>& rows, const std::string& outputFilename) {
+void saveRows(const std::vector<Row>& rows, const std::string& outputFilename) {
     std::ofstream outputFile(outputFilename);
     outputFile << "string,date,float64\n";
 
@@ -144,7 +139,7 @@ int main() {
 
     // 4. Merge by name + date and sum values.
     const auto mergeStart = Clock::now();
-    std::vector<MergedRow> mergedRows = mergeByNameAndDate(filteredRows);
+    std::vector<Row> mergedRows = mergeByNameAndDate(filteredRows);
     const auto mergeEnd = Clock::now();
 
     // 5. Sort by name, then by date.
