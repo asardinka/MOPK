@@ -1,4 +1,5 @@
-#include <algorithm>\n#include <array>
+#include <algorithm>
+#include <array>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
