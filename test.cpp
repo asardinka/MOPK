@@ -23,7 +23,7 @@ struct MergedRow {
 std::vector<std::ifstream> openDataFiles() {
     std::vector<std::ifstream> files;
 
-    for (const auto& entry : std::filesystem::directory_iterator(".")) {
+    for (const auto& entry : std::filesystem::directory_iterator("data")) {
         const std::string filename = entry.path().filename().string();
 
         if (entry.is_regular_file() &&
@@ -184,7 +184,7 @@ int main() {
 
     // 6. Print to console and write to file.
     const auto outputStart = Clock::now();
-    outputRows(mergedRows, "merged.csv");
+    outputRows(mergedRows, "data/merged.csv");
     const auto outputEnd = Clock::now();
 
     const auto programEnd = Clock::now();

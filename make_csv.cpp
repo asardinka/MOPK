@@ -86,11 +86,11 @@ int main() {
     std::mt19937 rng(std::random_device{}());
     const int rowCount = 1000000;
 
-    if (!generateCSV("data1.csv", rowCount, rng)) {
+    if (!generateCSV("data/data1.csv", rowCount, rng)) {
         return 1;
     }
 
-    if (!generateCSV("data2.csv", rowCount, rng)) {
+    if (!generateCSV("data/data2.csv", rowCount, rng)) {
         return 1;
     }
 
