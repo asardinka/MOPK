@@ -12,6 +12,7 @@
 // Тест проверяет, компенсирует ли отсутствие unordered_map + vector + отдельной сортировки
 // дополнительные расходы древовидной структуры std::map.
 
+#include <array>
 #include <charconv>
 #include <chrono>
 #include <filesystem>
@@ -36,8 +37,8 @@ std::vector<std::ifstream> openDataFiles() {
     return files;
 }
 
-std::map<std::pair<std::string, std::string>, double> parseFilterMergeFiles(std::vector<std::ifstream>& files, const std::string& startDate, const std::string& endDate) {
-    std::map<std::pair<std::string, std::string>, double> mergedRows;
+std::map<std::pair<std::string, std::string>, std::array<double, 7>> parseFilterMergeFiles(std::vector<std::ifstream>& files, const std::string& startDate, const std::string& endDate) {
+    std::map<std::pair<std::string, std::string>, std::array<double, 7>> mergedRows;
 
     for (auto& file : files) {
         std::string line;
@@ -59,30 +60,37 @@ std::map<std::pair<std::string, std::string>, double> parseFilterMergeFiles(std:
             std::string name = line.substr(first + 1, second - first - 1);
             std::string date = line.substr(second + 1, third - second - 1);
 
-            double value;
-            std::from_chars(line.data() + third + 1, line.data() + line.size(), value);
+            std::array<double, 7> values{};
+            std::size_t valueStart = third + 1;
 
-            mergedRows[{name, date}] += value;
+            for (int i = 0; i < 7; ++i) {
+                const std::size_t valueEnd = i == 6 ? line.size() : line.find(',', valueStart);
+                std::from_chars(line.data() + valueStart, line.data() + valueEnd, values[i]);
+                valueStart = valueEnd + 1;
+            }
+
+            auto& sums = mergedRows[{name, date}];
+            for (int i = 0; i < 7; ++i) sums[i] += values[i];
         }
     }
 
     return mergedRows;
 }
 
-void printRows(const std::map<std::pair<std::string, std::string>, double>& rows) {
-    std::cout << "string,date,float64\n";
+void printRows(const std::map<std::pair<std::string, std::string>, std::array<double, 7>>& rows) {
+    std::cout << "string,date,float64_1,float64_2,float64_3,float64_4,float64_5,float64_6,float64_7\n";
 
     for (const auto& row : rows) {
-        std::cout << row.first.first << "," << row.first.second << "," << row.second << "\n";
+        std::cout << row.first.first << "," << row.first.second; for (double value : row.second) std::cout << "," << value; std::cout << "\n";
     }
 }
 
-void saveRows(const std::map<std::pair<std::string, std::string>, double>& rows, const std::string& outputFilename) {
+void saveRows(const std::map<std::pair<std::string, std::string>, std::array<double, 7>>& rows, const std::string& outputFilename) {
     std::ofstream outputFile(outputFilename);
-    outputFile << "string,date,float64\n";
+    outputFile << "string,date,float64_1,float64_2,float64_3,float64_4,float64_5,float64_6,float64_7\n";
 
     for (const auto& row : rows) {
-        outputFile << row.first.first << "," << row.first.second << "," << row.second << "\n";
+        outputFile << row.first.first << "," << row.first.second; for (double value : row.second) outputFile << "," << value; outputFile << "\n";
     }
 }
 
@@ -101,7 +109,7 @@ int main() {
 
     // 2. Parse, filter, merge and keep result sorted inside std::map.
     const auto processStart = Clock::now();
-    std::map<std::pair<std::string, std::string>, double> mergedRows = parseFilterMergeFiles(files, startDate, endDate);
+    std::map<std::pair<std::string, std::string>, std::array<double, 7>> mergedRows = parseFilterMergeFiles(files, startDate, endDate);
     const auto processEnd = Clock::now();
 
     const auto processingEnd = Clock::now();
@@ -127,17 +135,3 @@ int main() {
 // $Env:PATH += ";C:\\msys64\\ucrt64\\bin"
 // g++ -std=c++17 -O2 test6.cpp -o build/test6.exe && build/test6.exe
 
-// --- TIME ---
-// Open:                    0.6353 ms
-// Parse+Filter+Merge+Sort: 460.139 ms
-// Processing:              460.775 ms
-
-// --- TIME ---
-// Open:                    0.6323 ms
-// Parse+Filter+Merge+Sort: 179.485 ms
-// Processing:              180.118 ms
-
-// --- TIME ---
-// Open:                    0.7759 ms
-// Parse+Filter+Merge+Sort: 185.392 ms
-// Processing:              186.168 ms
