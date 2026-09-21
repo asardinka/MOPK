@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -145,28 +146,75 @@ void outputRows(
 }
 
 int main() {
+    using Clock = std::chrono::steady_clock;
+
     const std::string startDate = "2026-11-01";
     const std::string endDate = "2026-11-10";
 
+    const auto programStart = Clock::now();
+
     // 1. Open all data*.csv files.
+    const auto openStart = Clock::now();
     std::vector<std::ifstream> files = openDataFiles();
+    const auto openEnd = Clock::now();
 
     // 2. Parse all rows.
+    const auto parseStart = Clock::now();
     std::vector<Row> rows = parseFiles(files);
+    const auto parseEnd = Clock::now();
 
     // 3. Filter rows by date.
+    const auto filterStart = Clock::now();
     std::vector<Row> filteredRows =
         filterByDate(rows, startDate, endDate);
+    const auto filterEnd = Clock::now();
 
     // 4. Merge by name + date and sum values.
+    const auto mergeStart = Clock::now();
     std::vector<MergedRow> mergedRows =
         mergeByNameAndDate(filteredRows);
+    const auto mergeEnd = Clock::now();
 
     // 5. Sort by name, then by date.
+    const auto sortStart = Clock::now();
     sortRows(mergedRows);
+    const auto sortEnd = Clock::now();
+
+    const auto processingEnd = Clock::now();
 
     // 6. Print to console and write to file.
+    const auto outputStart = Clock::now();
     outputRows(mergedRows, "merged.csv");
+    const auto outputEnd = Clock::now();
+
+    const auto programEnd = Clock::now();
+
+    const double openMs =
+        std::chrono::duration<double, std::milli>(openEnd - openStart).count();
+    const double parseMs =
+        std::chrono::duration<double, std::milli>(parseEnd - parseStart).count();
+    const double filterMs =
+        std::chrono::duration<double, std::milli>(filterEnd - filterStart).count();
+    const double mergeMs =
+        std::chrono::duration<double, std::milli>(mergeEnd - mergeStart).count();
+    const double sortMs =
+        std::chrono::duration<double, std::milli>(sortEnd - sortStart).count();
+    const double outputMs =
+        std::chrono::duration<double, std::milli>(outputEnd - outputStart).count();
+    const double processingMs =
+        std::chrono::duration<double, std::milli>(processingEnd - programStart).count();
+    const double totalMs =
+        std::chrono::duration<double, std::milli>(programEnd - programStart).count();
+
+    std::cout << "\n--- TIME ---\n";
+    std::cout << "Open:       " << openMs << " ms\n";
+    std::cout << "Parse:      " << parseMs << " ms\n";
+    std::cout << "Filter:     " << filterMs << " ms\n";
+    std::cout << "Merge:      " << mergeMs << " ms\n";
+    std::cout << "Sort:       " << sortMs << " ms\n";
+    std::cout << "Output:     " << outputMs << " ms\n";
+    std::cout << "Processing: " << processingMs << " ms\n";
+    std::cout << "Total:      " << totalMs << " ms\n";
 
     return 0;
 }
