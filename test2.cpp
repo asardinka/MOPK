@@ -175,3 +175,27 @@ int main() {
 
 // $Env:PATH += ";C:\\msys64\\ucrt64\\bin"
 // g++ -std=c++17 -O2 test2.cpp -o build/test2.exe && build/test2.exe
+
+// --- TIME --- Без оптимизации 
+// Open:       0.6419 ms
+// Parse:      1621.18 ms
+// Filter:     104.683 ms
+// Merge:      83.2132 ms
+// Sort:       0.617 ms
+// Processing: 1810.34 ms
+
+// --- TIME --- Оптимизация O2
+// Open:       0.6368 ms
+// Parse:      727.328 ms
+// Filter:     21.343 ms
+// Merge:      11.5719 ms
+// Sort:       0.0938 ms
+// Processing: 760.974 ms
+
+// --- TIME --- Оптимизация O3
+// Open:       0.5949 ms
+// Parse:      727.092 ms
+// Filter:     21.2823 ms
+// Merge:      11.381 ms
+// Sort:       0.0979 ms
+// Processing: 760.448 ms
