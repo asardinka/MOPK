@@ -5,7 +5,6 @@
 #include <cstdint>
 #include <deque>
 #include <fstream>
-#include <iomanip>
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -18,7 +17,7 @@ struct Row {
     double value;
 };
 
-int parseDate(const char* begin, const char* end, char dateSeparator) {
+int parseDate(const char* begin, const char* end, char dateSeparator, const std::string& dateFormat) {
     int parts[3] = {};
     int part = 0;
 
@@ -30,7 +29,17 @@ int parseDate(const char* begin, const char* end, char dateSeparator) {
         }
     }
 
-    return parts[0] * 10000 + parts[1] * 100 + parts[2];
+    int year = 0;
+    int month = 0;
+    int day = 0;
+
+    for (int i = 0; i < 3; ++i) {
+        if (dateFormat[i] == 'Y') year = parts[i];
+        if (dateFormat[i] == 'M') month = parts[i];
+        if (dateFormat[i] == 'D') day = parts[i];
+    }
+
+    return year * 10000 + month * 100 + day;
 }
 
 double parseFloat64(const char* begin, const char* end, char decimalSeparator) {
@@ -87,23 +96,26 @@ double parseFloat64(const char* begin, const char* end, char decimalSeparator) {
     return negative ? -value : value;
 }
 
-std::string dateToString(int date, char dateSeparator) {
+std::string dateToString(int date, char dateSeparator, const std::string& dateFormat) {
     const int year = date / 10000;
     const int month = date / 100 % 100;
     const int day = date % 100;
+    std::string result;
 
-    std::string result = std::to_string(year);
-    result += dateSeparator;
-    result += month < 10 ? "0" + std::to_string(month) : std::to_string(month);
-    result += dateSeparator;
-    result += day < 10 ? "0" + std::to_string(day) : std::to_string(day);
+    for (int i = 0; i < 3; ++i) {
+        if (i > 0) result += dateSeparator;
+
+        if (dateFormat[i] == 'Y') result += std::to_string(year);
+        if (dateFormat[i] == 'M') result += month < 10 ? "0" + std::to_string(month) : std::to_string(month);
+        if (dateFormat[i] == 'D') result += day < 10 ? "0" + std::to_string(day) : std::to_string(day);
+    }
 
     return result;
 }
 
-std::vector<Row> processFiles(const std::vector<std::string>& filenames, char csvSeparator, char dateSeparator, char decimalSeparator, const std::string& startDate, const std::string& endDate) {
-    const int start = parseDate(startDate.data(), startDate.data() + startDate.size(), dateSeparator);
-    const int finish = parseDate(endDate.data(), endDate.data() + endDate.size(), dateSeparator);
+std::vector<Row> processFiles(const std::vector<std::string>& filenames, char csvSeparator, char dateSeparator, char decimalSeparator, const std::string& dateFormat, const std::string& startDate, const std::string& endDate) {
+    const int start = parseDate(startDate.data(), startDate.data() + startDate.size(), dateSeparator, dateFormat);
+    const int finish = parseDate(endDate.data(), endDate.data() + endDate.size(), dateSeparator, dateFormat);
 
     std::deque<std::string> names;
     std::unordered_map<std::string_view, std::size_t> nameIds;
@@ -172,7 +184,7 @@ std::vector<Row> processFiles(const std::vector<std::string>& filenames, char cs
                 ++current;
             }
 
-            const int date = parseDate(dateStart, dateEnd, dateSeparator);
+            const int date = parseDate(dateStart, dateEnd, dateSeparator, dateFormat);
 
             if (date < start || date > finish) {
                 continue;
@@ -216,20 +228,20 @@ std::vector<Row> processFiles(const std::vector<std::string>& filenames, char cs
     return rows;
 }
 
-void printRows(const std::vector<Row>& rows, char csvSeparator, char dateSeparator) {
+void printRows(const std::vector<Row>& rows, char csvSeparator, char dateSeparator, const std::string& dateFormat) {
     std::cout << "string" << csvSeparator << "date" << csvSeparator << "float64\n";
 
     for (const auto& row : rows) {
-        std::cout << row.name << csvSeparator << dateToString(row.date, dateSeparator) << csvSeparator << row.value << "\n";
+        std::cout << row.name << csvSeparator << dateToString(row.date, dateSeparator, dateFormat) << csvSeparator << row.value << "\n";
     }
 }
 
-void saveRows(const std::vector<Row>& rows, const std::string& outputFilename, char csvSeparator, char dateSeparator) {
+void saveRows(const std::vector<Row>& rows, const std::string& outputFilename, char csvSeparator, char dateSeparator, const std::string& dateFormat) {
     std::ofstream outputFile(outputFilename);
     outputFile << "string" << csvSeparator << "date" << csvSeparator << "float64\n";
 
     for (const auto& row : rows) {
-        outputFile << row.name << csvSeparator << dateToString(row.date, dateSeparator) << csvSeparator << row.value << "\n";
+        outputFile << row.name << csvSeparator << dateToString(row.date, dateSeparator, dateFormat) << csvSeparator << row.value << "\n";
     }
 }
 
@@ -240,17 +252,18 @@ int main() {
     const char csvSeparator = ',';
     const char dateSeparator = '-';
     const char decimalSeparator = '.';
+    const std::string dateFormat = "YMD";
     const std::string startDate = "2026-11-01";
     const std::string endDate = "2026-11-10";
 
     const auto processingStart = Clock::now();
-    std::vector<Row> rows = processFiles(filenames, csvSeparator, dateSeparator, decimalSeparator, startDate, endDate);
+    std::vector<Row> rows = processFiles(filenames, csvSeparator, dateSeparator, decimalSeparator, dateFormat, startDate, endDate);
     const auto processingEnd = Clock::now();
 
     const double processingMs = std::chrono::duration<double, std::milli>(processingEnd - processingStart).count();
 
-    printRows(rows, csvSeparator, dateSeparator);
-    saveRows(rows, "data/merged.csv", csvSeparator, dateSeparator);
+    printRows(rows, csvSeparator, dateSeparator, dateFormat);
+    saveRows(rows, "data/merged.csv", csvSeparator, dateSeparator, dateFormat);
 
     std::cout << "\n--- TIME ---\n";
     std::cout << "Processing: " << processingMs << " ms\n";
