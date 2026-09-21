@@ -3,8 +3,8 @@
 // Замена std::stringstream на прямой поиск разделителей через std::string::find()
 // должна уменьшить время парсинга, не изменяя остальные этапы пайплайна.
 // Тестирование показывает, что после такой замены действительно наблюдается прирост скорости.
-//
-// #include <algorithm>
+
+#include <algorithm>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
