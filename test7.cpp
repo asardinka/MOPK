@@ -166,3 +166,18 @@ int main() {
 
 // $Env:PATH += ";C:\\msys64\\ucrt64\\bin"
 // g++ -std=c++17 -O2 test7.cpp -o build/test7.exe && build/test7.exe
+
+// --- TIME ---
+// Open:                    0.5548 ms
+// Parse+Filter+Merge+Sort: 350.289 ms
+// Processing:              350.844 ms
+
+// --- TIME ---
+// Open:                    0.5689 ms
+// Parse+Filter+Merge+Sort: 175.399 ms
+// Processing:              175.968 ms
+
+// --- TIME ---
+// Open:                    0.7458 ms
+// Parse+Filter+Merge+Sort: 174.295 ms
+// Processing:              175.041 ms
