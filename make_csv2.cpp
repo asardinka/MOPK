@@ -37,7 +37,7 @@ std::vector<std::string> generateDates() {
 
 std::string generateRandomString(std::mt19937& rng) {
     static const std::string characters = "abcdefghijklmnopqrstuvwxyz";
-    std::uniform_int_distribution<int> lengthDist(10, 50);
+    std::uniform_int_distribution<int> lengthDist(5, 10);
     std::uniform_int_distribution<std::size_t> charDist(0, characters.size() - 1);
 
     const int length = lengthDist(rng);
@@ -95,7 +95,7 @@ int main() {
         return 1;
     }
 
-    if (!generateCSV("data/S2.cvs", rowCount, rng)) {
+    if (!generateCSV("data/S2.csv", rowCount, rng)) {
         return 1;
     }
 
