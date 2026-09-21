@@ -19,15 +19,6 @@ struct Row {
     double value;
 };
 
-struct Settings {
-    std::vector<std::string> filenames;
-    char csvSeparator;
-    char dateSeparator;
-    char decimalSeparator;
-    std::string startDate;
-    std::string endDate;
-};
-
 int parseDate(const char* begin, const char* end, char dateSeparator) {
     int parts[3] = {};
     int part = 0;
@@ -152,10 +143,10 @@ std::vector<Row> mergeRows(const std::vector<Row>& rows) {
     return mergedRows;
 }
 
-std::vector<Row> test1(const Settings& settings) {
+std::vector<Row> test1(const std::vector<std::string>& filenames, char csvSeparator, char dateSeparator, char decimalSeparator, const std::string& startDateText, const std::string& endDateText) {
     std::vector<Row> rows;
 
-    for (const std::string& filename : settings.filenames) {
+    for (const std::string& filename : filenames) {
         std::ifstream file(filename);
         std::string line;
         std::getline(file, line);
@@ -167,21 +158,21 @@ std::vector<Row> test1(const Settings& settings) {
             std::string date;
             std::string value;
 
-            std::getline(stream, id, settings.csvSeparator);
-            std::getline(stream, name, settings.csvSeparator);
-            std::getline(stream, date, settings.csvSeparator);
+            std::getline(stream, id, csvSeparator);
+            std::getline(stream, name, csvSeparator);
+            std::getline(stream, date, csvSeparator);
             std::getline(stream, value);
 
-            rows.push_back({name, date, parseFloatStod(value, settings.decimalSeparator)});
+            rows.push_back({name, date, parseFloatStod(value, decimalSeparator)});
         }
     }
 
-    const int startDate = parseDate(settings.startDate.data(), settings.startDate.data() + settings.startDate.size(), settings.dateSeparator);
-    const int endDate = parseDate(settings.endDate.data(), settings.endDate.data() + settings.endDate.size(), settings.dateSeparator);
+    const int startDate = parseDate(startDateText.data(), startDateText.data() + startDateText.size(), dateSeparator);
+    const int endDate = parseDate(endDateText.data(), endDateText.data() + endDateText.size(), dateSeparator);
     std::vector<Row> filteredRows;
 
     for (const Row& row : rows) {
-        const int date = parseDate(row.date.data(), row.date.data() + row.date.size(), settings.dateSeparator);
+        const int date = parseDate(row.date.data(), row.date.data() + row.date.size(), dateSeparator);
 
         if (date >= startDate && date <= endDate) {
             filteredRows.push_back(row);
@@ -193,33 +184,33 @@ std::vector<Row> test1(const Settings& settings) {
     return mergedRows;
 }
 
-std::vector<Row> test2(const Settings& settings) {
+std::vector<Row> test2(const std::vector<std::string>& filenames, char csvSeparator, char dateSeparator, char decimalSeparator, const std::string& startDateText, const std::string& endDateText) {
     std::vector<Row> rows;
 
-    for (const std::string& filename : settings.filenames) {
+    for (const std::string& filename : filenames) {
         std::ifstream file(filename);
         std::string line;
         std::getline(file, line);
 
         while (std::getline(file, line)) {
-            const std::size_t first = line.find(settings.csvSeparator);
-            const std::size_t second = line.find(settings.csvSeparator, first + 1);
-            const std::size_t third = line.find(settings.csvSeparator, second + 1);
+            const std::size_t first = line.find(csvSeparator);
+            const std::size_t second = line.find(csvSeparator, first + 1);
+            const std::size_t third = line.find(csvSeparator, second + 1);
 
             std::string name = line.substr(first + 1, second - first - 1);
             std::string date = line.substr(second + 1, third - second - 1);
-            double value = parseFloatStod(line.substr(third + 1), settings.decimalSeparator);
+            double value = parseFloatStod(line.substr(third + 1), decimalSeparator);
 
             rows.push_back({name, date, value});
         }
     }
 
-    const int startDate = parseDate(settings.startDate.data(), settings.startDate.data() + settings.startDate.size(), settings.dateSeparator);
-    const int endDate = parseDate(settings.endDate.data(), settings.endDate.data() + settings.endDate.size(), settings.dateSeparator);
+    const int startDate = parseDate(startDateText.data(), startDateText.data() + startDateText.size(), dateSeparator);
+    const int endDate = parseDate(endDateText.data(), endDateText.data() + endDateText.size(), dateSeparator);
     std::vector<Row> filteredRows;
 
     for (const Row& row : rows) {
-        const int date = parseDate(row.date.data(), row.date.data() + row.date.size(), settings.dateSeparator);
+        const int date = parseDate(row.date.data(), row.date.data() + row.date.size(), dateSeparator);
 
         if (date >= startDate && date <= endDate) {
             filteredRows.push_back(row);
@@ -231,22 +222,22 @@ std::vector<Row> test2(const Settings& settings) {
     return mergedRows;
 }
 
-std::vector<Row> test3(const Settings& settings) {
-    const int startDate = parseDate(settings.startDate.data(), settings.startDate.data() + settings.startDate.size(), settings.dateSeparator);
-    const int endDate = parseDate(settings.endDate.data(), settings.endDate.data() + settings.endDate.size(), settings.dateSeparator);
+std::vector<Row> test3(const std::vector<std::string>& filenames, char csvSeparator, char dateSeparator, char decimalSeparator, const std::string& startDateText, const std::string& endDateText) {
+    const int startDate = parseDate(startDateText.data(), startDateText.data() + startDateText.size(), dateSeparator);
+    const int endDate = parseDate(endDateText.data(), endDateText.data() + endDateText.size(), dateSeparator);
     std::vector<Row> mergedRows;
     std::unordered_map<std::string, std::size_t> positions;
 
-    for (const std::string& filename : settings.filenames) {
+    for (const std::string& filename : filenames) {
         std::ifstream file(filename);
         std::string line;
         std::getline(file, line);
 
         while (std::getline(file, line)) {
-            const std::size_t first = line.find(settings.csvSeparator);
-            const std::size_t second = line.find(settings.csvSeparator, first + 1);
-            const std::size_t third = line.find(settings.csvSeparator, second + 1);
-            const int dateNumber = parseDate(line.data() + second + 1, line.data() + third, settings.dateSeparator);
+            const std::size_t first = line.find(csvSeparator);
+            const std::size_t second = line.find(csvSeparator, first + 1);
+            const std::size_t third = line.find(csvSeparator, second + 1);
+            const int dateNumber = parseDate(line.data() + second + 1, line.data() + third, dateSeparator);
 
             if (dateNumber < startDate || dateNumber > endDate) {
                 continue;
@@ -254,7 +245,7 @@ std::vector<Row> test3(const Settings& settings) {
 
             std::string name = line.substr(first + 1, second - first - 1);
             std::string date = line.substr(second + 1, third - second - 1);
-            double value = parseFloatStod(line.substr(third + 1), settings.decimalSeparator);
+            double value = parseFloatStod(line.substr(third + 1), decimalSeparator);
 
             const std::string key = name + "|" + date;
             auto it = positions.find(key);
@@ -272,22 +263,22 @@ std::vector<Row> test3(const Settings& settings) {
     return mergedRows;
 }
 
-std::vector<Row> test4(const Settings& settings) {
-    const int startDate = parseDate(settings.startDate.data(), settings.startDate.data() + settings.startDate.size(), settings.dateSeparator);
-    const int endDate = parseDate(settings.endDate.data(), settings.endDate.data() + settings.endDate.size(), settings.dateSeparator);
+std::vector<Row> test4(const std::vector<std::string>& filenames, char csvSeparator, char dateSeparator, char decimalSeparator, const std::string& startDateText, const std::string& endDateText) {
+    const int startDate = parseDate(startDateText.data(), startDateText.data() + startDateText.size(), dateSeparator);
+    const int endDate = parseDate(endDateText.data(), endDateText.data() + endDateText.size(), dateSeparator);
     std::vector<Row> mergedRows;
     std::unordered_map<std::string, std::size_t> positions;
 
-    for (const std::string& filename : settings.filenames) {
+    for (const std::string& filename : filenames) {
         std::ifstream file(filename);
         std::string line;
         std::getline(file, line);
 
         while (std::getline(file, line)) {
-            const std::size_t first = line.find(settings.csvSeparator);
-            const std::size_t second = line.find(settings.csvSeparator, first + 1);
-            const std::size_t third = line.find(settings.csvSeparator, second + 1);
-            const int dateNumber = parseDate(line.data() + second + 1, line.data() + third, settings.dateSeparator);
+            const std::size_t first = line.find(csvSeparator);
+            const std::size_t second = line.find(csvSeparator, first + 1);
+            const std::size_t third = line.find(csvSeparator, second + 1);
+            const int dateNumber = parseDate(line.data() + second + 1, line.data() + third, dateSeparator);
 
             if (dateNumber < startDate || dateNumber > endDate) {
                 continue;
@@ -297,7 +288,7 @@ std::vector<Row> test4(const Settings& settings) {
             std::string date = line.substr(second + 1, third - second - 1);
             const char* valueStart = line.data() + third + 1;
             const char* valueEnd = line.data() + line.size();
-            double value = parseFloat64(valueStart, valueEnd, settings.decimalSeparator);
+            double value = parseFloat64(valueStart, valueEnd, decimalSeparator);
 
             const std::string key = name + "|" + date;
             auto it = positions.find(key);
@@ -315,23 +306,23 @@ std::vector<Row> test4(const Settings& settings) {
     return mergedRows;
 }
 
-std::vector<Row> test5(const Settings& settings) {
-    const int startDate = parseDate(settings.startDate.data(), settings.startDate.data() + settings.startDate.size(), settings.dateSeparator);
-    const int endDate = parseDate(settings.endDate.data(), settings.endDate.data() + settings.endDate.size(), settings.dateSeparator);
+std::vector<Row> test5(const std::vector<std::string>& filenames, char csvSeparator, char dateSeparator, char decimalSeparator, const std::string& startDateText, const std::string& endDateText) {
+    const int startDate = parseDate(startDateText.data(), startDateText.data() + startDateText.size(), dateSeparator);
+    const int endDate = parseDate(endDateText.data(), endDateText.data() + endDateText.size(), dateSeparator);
     std::vector<Row> mergedRows;
     std::deque<std::string> storedKeys;
     std::unordered_map<std::string_view, std::size_t> positions;
 
-    for (const std::string& filename : settings.filenames) {
+    for (const std::string& filename : filenames) {
         std::ifstream file(filename);
         std::string line;
         std::getline(file, line);
 
         while (std::getline(file, line)) {
-            const std::size_t first = line.find(settings.csvSeparator);
-            const std::size_t second = line.find(settings.csvSeparator, first + 1);
-            const std::size_t third = line.find(settings.csvSeparator, second + 1);
-            const int dateNumber = parseDate(line.data() + second + 1, line.data() + third, settings.dateSeparator);
+            const std::size_t first = line.find(csvSeparator);
+            const std::size_t second = line.find(csvSeparator, first + 1);
+            const std::size_t third = line.find(csvSeparator, second + 1);
+            const int dateNumber = parseDate(line.data() + second + 1, line.data() + third, dateSeparator);
 
             if (dateNumber < startDate || dateNumber > endDate) {
                 continue;
@@ -340,7 +331,7 @@ std::vector<Row> test5(const Settings& settings) {
             std::string_view name(line.data() + first + 1, second - first - 1);
             std::string_view date(line.data() + second + 1, third - second - 1);
             std::string_view key(line.data() + first + 1, third - first - 1);
-            double value = parseFloat64(line.data() + third + 1, line.data() + line.size(), settings.decimalSeparator);
+            double value = parseFloat64(line.data() + third + 1, line.data() + line.size(), decimalSeparator);
 
             auto it = positions.find(key);
 
@@ -358,21 +349,21 @@ std::vector<Row> test5(const Settings& settings) {
     return mergedRows;
 }
 
-std::vector<Row> test6(const Settings& settings) {
-    const int startDate = parseDate(settings.startDate.data(), settings.startDate.data() + settings.startDate.size(), settings.dateSeparator);
-    const int endDate = parseDate(settings.endDate.data(), settings.endDate.data() + settings.endDate.size(), settings.dateSeparator);
+std::vector<Row> test6(const std::vector<std::string>& filenames, char csvSeparator, char dateSeparator, char decimalSeparator, const std::string& startDateText, const std::string& endDateText) {
+    const int startDate = parseDate(startDateText.data(), startDateText.data() + startDateText.size(), dateSeparator);
+    const int endDate = parseDate(endDateText.data(), endDateText.data() + endDateText.size(), dateSeparator);
     std::map<std::pair<std::string, std::string>, double> mergedRows;
 
-    for (const std::string& filename : settings.filenames) {
+    for (const std::string& filename : filenames) {
         std::ifstream file(filename);
         std::string line;
         std::getline(file, line);
 
         while (std::getline(file, line)) {
-            const std::size_t first = line.find(settings.csvSeparator);
-            const std::size_t second = line.find(settings.csvSeparator, first + 1);
-            const std::size_t third = line.find(settings.csvSeparator, second + 1);
-            const int dateNumber = parseDate(line.data() + second + 1, line.data() + third, settings.dateSeparator);
+            const std::size_t first = line.find(csvSeparator);
+            const std::size_t second = line.find(csvSeparator, first + 1);
+            const std::size_t third = line.find(csvSeparator, second + 1);
+            const int dateNumber = parseDate(line.data() + second + 1, line.data() + third, dateSeparator);
 
             if (dateNumber < startDate || dateNumber > endDate) {
                 continue;
@@ -380,7 +371,7 @@ std::vector<Row> test6(const Settings& settings) {
 
             std::string name = line.substr(first + 1, second - first - 1);
             std::string date = line.substr(second + 1, third - second - 1);
-            double value = parseFloat64(line.data() + third + 1, line.data() + line.size(), settings.decimalSeparator);
+            double value = parseFloat64(line.data() + third + 1, line.data() + line.size(), decimalSeparator);
 
             mergedRows[{name, date}] += value;
         }
@@ -396,9 +387,9 @@ std::vector<Row> test6(const Settings& settings) {
     return rows;
 }
 
-std::vector<Row> test7(const Settings& settings) {
-    const int startDate = parseDate(settings.startDate.data(), settings.startDate.data() + settings.startDate.size(), settings.dateSeparator);
-    const int endDate = parseDate(settings.endDate.data(), settings.endDate.data() + settings.endDate.size(), settings.dateSeparator);
+std::vector<Row> test7(const std::vector<std::string>& filenames, char csvSeparator, char dateSeparator, char decimalSeparator, const std::string& startDateText, const std::string& endDateText) {
+    const int startDate = parseDate(startDateText.data(), startDateText.data() + startDateText.size(), dateSeparator);
+    const int endDate = parseDate(endDateText.data(), endDateText.data() + endDateText.size(), dateSeparator);
 
     std::deque<std::string> names;
     std::unordered_map<std::string_view, std::size_t> nameIds;
@@ -407,16 +398,16 @@ std::vector<Row> test7(const Settings& settings) {
     std::vector<std::vector<double>> sums;
     std::vector<std::vector<bool>> used;
 
-    for (const std::string& filename : settings.filenames) {
+    for (const std::string& filename : filenames) {
         std::ifstream file(filename);
         std::string line;
         std::getline(file, line);
 
         while (std::getline(file, line)) {
-            const std::size_t first = line.find(settings.csvSeparator);
-            const std::size_t second = line.find(settings.csvSeparator, first + 1);
-            const std::size_t third = line.find(settings.csvSeparator, second + 1);
-            const int date = parseDate(line.data() + second + 1, line.data() + third, settings.dateSeparator);
+            const std::size_t first = line.find(csvSeparator);
+            const std::size_t second = line.find(csvSeparator, first + 1);
+            const std::size_t third = line.find(csvSeparator, second + 1);
+            const int date = parseDate(line.data() + second + 1, line.data() + third, dateSeparator);
 
             if (date < startDate || date > endDate) {
                 continue;
@@ -455,7 +446,7 @@ std::vector<Row> test7(const Settings& settings) {
                 dateId = dateIt->second;
             }
 
-            double value = parseFloat64(line.data() + third + 1, line.data() + line.size(), settings.decimalSeparator);
+            double value = parseFloat64(line.data() + third + 1, line.data() + line.size(), decimalSeparator);
             sums[nameId][dateId] += value;
             used[nameId][dateId] = true;
         }
@@ -466,7 +457,7 @@ std::vector<Row> test7(const Settings& settings) {
     for (std::size_t nameId = 0; nameId < names.size(); ++nameId) {
         for (std::size_t dateId = 0; dateId < dates.size(); ++dateId) {
             if (used[nameId][dateId]) {
-                rows.push_back({names[nameId], dateToString(dates[dateId], settings.dateSeparator), sums[nameId][dateId]});
+                rows.push_back({names[nameId], dateToString(dates[dateId], dateSeparator), sums[nameId][dateId]});
             }
         }
     }
@@ -489,24 +480,24 @@ std::vector<Row> makeRowsFromNumericSums(const std::deque<std::string>& names, c
     return rows;
 }
 
-std::vector<Row> test8(const Settings& settings) {
-    const int startDate = parseDate(settings.startDate.data(), settings.startDate.data() + settings.startDate.size(), settings.dateSeparator);
-    const int endDate = parseDate(settings.endDate.data(), settings.endDate.data() + settings.endDate.size(), settings.dateSeparator);
+std::vector<Row> test8(const std::vector<std::string>& filenames, char csvSeparator, char dateSeparator, char decimalSeparator, const std::string& startDateText, const std::string& endDateText) {
+    const int startDate = parseDate(startDateText.data(), startDateText.data() + startDateText.size(), dateSeparator);
+    const int endDate = parseDate(endDateText.data(), endDateText.data() + endDateText.size(), dateSeparator);
 
     std::deque<std::string> names;
     std::unordered_map<std::string_view, std::size_t> nameIds;
     std::unordered_map<std::uint64_t, double> sums;
 
-    for (const std::string& filename : settings.filenames) {
+    for (const std::string& filename : filenames) {
         std::ifstream file(filename);
         std::string line;
         std::getline(file, line);
 
         while (std::getline(file, line)) {
-            const std::size_t first = line.find(settings.csvSeparator);
-            const std::size_t second = line.find(settings.csvSeparator, first + 1);
-            const std::size_t third = line.find(settings.csvSeparator, second + 1);
-            const int date = parseDate(line.data() + second + 1, line.data() + third, settings.dateSeparator);
+            const std::size_t first = line.find(csvSeparator);
+            const std::size_t second = line.find(csvSeparator, first + 1);
+            const std::size_t third = line.find(csvSeparator, second + 1);
+            const int date = parseDate(line.data() + second + 1, line.data() + third, dateSeparator);
 
             if (date < startDate || date > endDate) {
                 continue;
@@ -524,24 +515,24 @@ std::vector<Row> test8(const Settings& settings) {
                 nameId = nameIt->second;
             }
 
-            double value = parseFloat64(line.data() + third + 1, line.data() + line.size(), settings.decimalSeparator);
+            double value = parseFloat64(line.data() + third + 1, line.data() + line.size(), decimalSeparator);
             const std::uint64_t key = (static_cast<std::uint64_t>(nameId) << 32) | static_cast<std::uint32_t>(date);
             sums[key] += value;
         }
     }
 
-    return makeRowsFromNumericSums(names, sums, settings.dateSeparator);
+    return makeRowsFromNumericSums(names, sums, dateSeparator);
 }
 
-std::vector<Row> test9(const Settings& settings) {
-    const int startDate = parseDate(settings.startDate.data(), settings.startDate.data() + settings.startDate.size(), settings.dateSeparator);
-    const int endDate = parseDate(settings.endDate.data(), settings.endDate.data() + settings.endDate.size(), settings.dateSeparator);
+std::vector<Row> test9(const std::vector<std::string>& filenames, char csvSeparator, char dateSeparator, char decimalSeparator, const std::string& startDateText, const std::string& endDateText) {
+    const int startDate = parseDate(startDateText.data(), startDateText.data() + startDateText.size(), dateSeparator);
+    const int endDate = parseDate(endDateText.data(), endDateText.data() + endDateText.size(), dateSeparator);
 
     std::deque<std::string> names;
     std::unordered_map<std::string_view, std::size_t> nameIds;
     std::unordered_map<std::uint64_t, double> sums;
 
-    for (const std::string& filename : settings.filenames) {
+    for (const std::string& filename : filenames) {
         std::ifstream file(filename, std::ios::binary);
         file.seekg(0, std::ios::end);
         const std::size_t fileSize = static_cast<std::size_t>(file.tellg());
@@ -562,7 +553,7 @@ std::vector<Row> test9(const Settings& settings) {
         }
 
         while (current < end) {
-            while (current < end && *current != settings.csvSeparator) {
+            while (current < end && *current != csvSeparator) {
                 ++current;
             }
 
@@ -573,7 +564,7 @@ std::vector<Row> test9(const Settings& settings) {
             ++current;
             const char* nameStart = current;
 
-            while (current < end && *current != settings.csvSeparator) {
+            while (current < end && *current != csvSeparator) {
                 ++current;
             }
 
@@ -581,7 +572,7 @@ std::vector<Row> test9(const Settings& settings) {
             ++current;
             const char* dateStart = current;
 
-            while (current < end && *current != settings.csvSeparator) {
+            while (current < end && *current != csvSeparator) {
                 ++current;
             }
 
@@ -603,7 +594,7 @@ std::vector<Row> test9(const Settings& settings) {
                 ++current;
             }
 
-            const int date = parseDate(dateStart, dateEnd, settings.dateSeparator);
+            const int date = parseDate(dateStart, dateEnd, dateSeparator);
 
             if (date < startDate || date > endDate) {
                 continue;
@@ -621,13 +612,13 @@ std::vector<Row> test9(const Settings& settings) {
                 nameId = nameIt->second;
             }
 
-            double value = parseFloat64(valueStart, valueEnd, settings.decimalSeparator);
+            double value = parseFloat64(valueStart, valueEnd, decimalSeparator);
             const std::uint64_t key = (static_cast<std::uint64_t>(nameId) << 32) | static_cast<std::uint32_t>(date);
             sums[key] += value;
         }
     }
 
-    return makeRowsFromNumericSums(names, sums, settings.dateSeparator);
+    return makeRowsFromNumericSums(names, sums, dateSeparator);
 }
 
 bool sameRows(const std::vector<Row>& left, const std::vector<Row>& right) {
@@ -686,16 +677,14 @@ void saveRows(const std::vector<Row>& rows, const std::string& outputFilename, c
 int main() {
     using Clock = std::chrono::steady_clock;
 
-    const Settings settings = {
-        {"data/data1.csv", "data/data2.csv"},
-        ',',
-        '-',
-        '.',
-        "2026-11-01",
-        "2026-11-10"
-    };
+    const std::vector<std::string> filenames = {"data/data1.csv", "data/data2.csv"};
+    const char csvSeparator = ',';
+    const char dateSeparator = '-';
+    const char decimalSeparator = '.';
+    const std::string startDate = "2026-11-01";
+    const std::string endDate = "2026-11-10";
 
-    using TestFunction = std::vector<Row> (*)(const Settings&);
+    using TestFunction = std::vector<Row> (*)(const std::vector<std::string>&, char, char, char, const std::string&, const std::string&);
 
     struct Test {
         const char* name;
@@ -714,7 +703,7 @@ int main() {
         {"test9", test9}
     };
 
-    if (settings.csvSeparator == settings.dateSeparator) {
+    if (csvSeparator == dateSeparator) {
         std::cout << "CSV separator and date separator must be different.\n";
         return 1;
     }
@@ -734,7 +723,7 @@ int main() {
 
     for (const Test& test : tests) {
         const auto start = Clock::now();
-        std::vector<Row> rows = test.function(settings);
+        std::vector<Row> rows = test.function(filenames, csvSeparator, dateSeparator, decimalSeparator, startDate, endDate);
         const auto end = Clock::now();
 
         const double processingMs = std::chrono::duration<double, std::milli>(end - start).count();
@@ -755,8 +744,8 @@ int main() {
         finalRows = std::move(rows);
     }
 
-    printRows(finalRows, settings.csvSeparator, settings.decimalSeparator);
-    saveRows(finalRows, "data/merged.csv", settings.csvSeparator, settings.decimalSeparator);
+    printRows(finalRows, csvSeparator, decimalSeparator);
+    saveRows(finalRows, "data/merged.csv", csvSeparator, decimalSeparator);
 
     std::cout << "\n--- BIG TEST ---\n";
 
