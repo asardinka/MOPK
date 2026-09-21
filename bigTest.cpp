@@ -322,9 +322,9 @@ std::vector<Row> test4(const std::vector<std::string>& filenames, char csvSepara
 
             if (it == positions.end()) {
                 positions[key] = mergedRows.size();
-                mergedRows.push_back({name, date, value});
+                mergedRows.push_back({name, date, values});
             } else {
-                mergedRows[it->second].value += value;
+                for (int valueIndex = 0; valueIndex < 7; ++valueIndex) mergedRows[it->second].values[valueIndex] += values[valueIndex];
             }
         }
     }
@@ -376,7 +376,7 @@ std::vector<Row> test5(const std::vector<std::string>& filenames, char csvSepara
                 positions.emplace(std::string_view(storedKeys.back()), mergedRows.size());
                 mergedRows.push_back({std::string(name), std::string(date), values});
             } else {
-                mergedRows[it->second].value += value;
+                for (int valueIndex = 0; valueIndex < 7; ++valueIndex) mergedRows[it->second].values[valueIndex] += values[valueIndex];
             }
         }
     }
