@@ -28,7 +28,7 @@ std::vector<std::string> generateDates() {
             const std::string monthStr = (month < 10 ? "0" : "") + std::to_string(month);
             const std::string dayStr = (day < 10 ? "0" : "") + std::to_string(day);
 
-            dates.push_back(monthStr + "." + dayStr + ".2026");
+            dates.push_back(dayStr + "." + monthStr + ".2026");
         }
     }
 
