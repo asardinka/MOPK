@@ -1,8 +1,8 @@
-// Performance hypothesis:
-// std::stringstream adds noticeable overhead for every CSV row.
-// Replacing it with direct delimiter search using std::string::find()
-// should reduce parsing cost while keeping the rest of the pipeline unchanged.
-// The benchmark confirms that this change produces a measurable speed improvement.
+// Предположение по улучшению производительности:
+// std::stringstream создаёт заметные накладные расходы при разборе каждой строки CSV.
+// Замена std::stringstream на прямой поиск разделителей через std::string::find()
+// должна уменьшить время парсинга, не изменяя остальные этапы пайплайна.
+// Тестирование показывает, что после такой замены действительно наблюдается прирост скорости.
 //
 // #include <algorithm>
 #include <chrono>
