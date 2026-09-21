@@ -26,9 +26,7 @@ std::vector<std::ifstream> openDataFiles() {
     for (const auto& entry : std::filesystem::directory_iterator("data")) {
         const std::string filename = entry.path().filename().string();
 
-        if (entry.is_regular_file() &&
-            filename.rfind("data", 0) == 0 &&
-            entry.path().extension() == ".csv") {
+        if (entry.is_regular_file() && filename.rfind("data", 0) == 0 && entry.path().extension() == ".csv") {
             files.emplace_back(entry.path());
         }
     }
@@ -41,7 +39,6 @@ std::vector<Row> parseFiles(std::vector<std::ifstream>& files) {
 
     for (auto& file : files) {
         std::string line;
-
         std::getline(file, line);
 
         while (std::getline(file, line)) {
@@ -57,18 +54,14 @@ std::vector<Row> parseFiles(std::vector<std::ifstream>& files) {
             std::getline(stream, date, ',');
             std::getline(stream, value);
 
-            rows.push_back({
-                name,
-                date,
-                std::stod(value)
-            });
+            rows.push_back({name, date, std::stod(value)});
         }
     }
 
     return rows;
 }
 
-std::vector<Row> filterByDate(const std::vector<Row>& rows,const std::string& startDate,const std::string& endDate) {
+std::vector<Row> filterByDate(const std::vector<Row>& rows, const std::string& startDate, const std::string& endDate) {
     std::vector<Row> filteredRows;
 
     for (const auto& row : rows) {
@@ -86,17 +79,11 @@ std::vector<MergedRow> mergeByNameAndDate(const std::vector<Row>& rows) {
 
     for (const auto& row : rows) {
         const std::string key = row.name + "|" + row.date;
-
         auto it = positions.find(key);
 
         if (it == positions.end()) {
             positions[key] = mergedRows.size();
-
-            mergedRows.push_back({
-                row.name,
-                row.date,
-                row.value
-            });
+            mergedRows.push_back({row.name, row.date, row.value});
         } else {
             mergedRows[it->second].value += row.value;
         }
@@ -106,32 +93,29 @@ std::vector<MergedRow> mergeByNameAndDate(const std::vector<Row>& rows) {
 }
 
 void sortRows(std::vector<MergedRow>& rows) {
-    std::sort(rows.begin(),rows.end(), [](const MergedRow& left, const MergedRow& right) {
-            if (left.name != right.name){ 
-                return left.name < right.name;
-            }
-
-            return left.date < right.date;
+    std::sort(rows.begin(), rows.end(), [](const MergedRow& left, const MergedRow& right) {
+        if (left.name != right.name) {
+            return left.name < right.name;
         }
-    );
+
+        return left.date < right.date;
+    });
 }
 
-void outputRows(const std::vector<MergedRow>& rows,const std::string& outputFilename) {
-    std::ofstream outputFile(outputFilename);
-
+void printRows(const std::vector<MergedRow>& rows) {
     std::cout << "string,date,float64\n";
+
+    for (const auto& row : rows) {
+        std::cout << row.name << "," << row.date << "," << row.value << "\n";
+    }
+}
+
+void saveRows(const std::vector<MergedRow>& rows, const std::string& outputFilename) {
+    std::ofstream outputFile(outputFilename);
     outputFile << "string,date,float64\n";
 
     for (const auto& row : rows) {
-        std::cout
-            << row.name << ","
-            << row.date << ","
-            << row.value << "\n";
-
-        outputFile
-            << row.name << ","
-            << row.date << ","
-            << row.value << "\n";
+        outputFile << row.name << "," << row.date << "," << row.value << "\n";
     }
 }
 
@@ -145,9 +129,7 @@ int main() {
 
     // 1. Open all data*.csv files.
     const auto openStart = Clock::now();
-
     std::vector<std::ifstream> files = openDataFiles();
-    
     const auto openEnd = Clock::now();
 
     // 2. Parse all rows.
@@ -172,21 +154,18 @@ int main() {
 
     const auto processingEnd = Clock::now();
 
-    // 6. Print to console and write to file.
-    const auto outputStart = Clock::now();
-    outputRows(mergedRows, "data/merged.csv");
-    const auto outputEnd = Clock::now();
-
-    const auto programEnd = Clock::now();
-
     const double openMs = std::chrono::duration<double, std::milli>(openEnd - openStart).count();
     const double parseMs = std::chrono::duration<double, std::milli>(parseEnd - parseStart).count();
     const double filterMs = std::chrono::duration<double, std::milli>(filterEnd - filterStart).count();
     const double mergeMs = std::chrono::duration<double, std::milli>(mergeEnd - mergeStart).count();
     const double sortMs = std::chrono::duration<double, std::milli>(sortEnd - sortStart).count();
-    const double outputMs = std::chrono::duration<double, std::milli>(outputEnd - outputStart).count();
     const double processingMs = std::chrono::duration<double, std::milli>(processingEnd - programStart).count();
-    const double totalMs = std::chrono::duration<double, std::milli>(programEnd - programStart).count();
+
+    // 6. Print result to console.
+    printRows(mergedRows);
+
+    // 7. Save the same result to file.
+    saveRows(mergedRows, "data/merged.csv");
 
     std::cout << "\n--- TIME ---\n";
     std::cout << "Open:       " << openMs << " ms\n";
@@ -194,24 +173,10 @@ int main() {
     std::cout << "Filter:     " << filterMs << " ms\n";
     std::cout << "Merge:      " << mergeMs << " ms\n";
     std::cout << "Sort:       " << sortMs << " ms\n";
-    std::cout << "Output:     " << outputMs << " ms\n";
     std::cout << "Processing: " << processingMs << " ms\n";
-    std::cout << "Total:      " << totalMs << " ms\n";
 
     return 0;
 }
 
-
-
-// $Env:PATH += ";C:\msys64\ucrt64\bin"
+// $Env:PATH += ";C:\\msys64\\ucrt64\\bin"
 // g++ -std=c++17 test.cpp -o build/test.exe && build/test.exe
-
-// --- TIME ---
-// Open:       0.9552 ms
-// Parse:      1783.66 ms
-// Filter:     115.659 ms
-// Merge:      89.1253 ms
-// Sort:       0.6718 ms
-// Output:     105.142 ms
-// Processing: 1990.08 ms
-// Total:      2095.22 ms
