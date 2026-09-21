@@ -49,7 +49,7 @@ bool generateCSV(const std::string& filename, int rowCount, std::mt19937& rng) {
         return false;
     }
 
-    outFile << "id,string,data,float64\n";
+    outFile << "id,string,data,float64_1,float64_2,float64_3,float64_4,float64_5,float64_6,float64_7\n";
 
     const std::vector<std::string> names = {
         "Alexander", "Dmitry", "Elena", "Maria", "Ivan",
@@ -73,9 +73,13 @@ bool generateCSV(const std::string& filename, int rowCount, std::mt19937& rng) {
     for (int i = 1; i <= rowCount; ++i) {
         const std::string& randomName = names[nameDist(rng)];
         const std::string& randomDate = dates[dateDist(rng)];
-        const double randomFloat = doubleDist(rng);
+        outFile << i << "," << randomName << "," << randomDate;
 
-        outFile << i << "," << randomName << "," << randomDate << "," << randomFloat << "\n";
+        for (int valueIndex = 0; valueIndex < 7; ++valueIndex) {
+            outFile << "," << doubleDist(rng);
+        }
+
+        outFile << "\n";
     }
 
     outFile.close();
