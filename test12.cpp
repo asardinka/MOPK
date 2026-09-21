@@ -213,9 +213,23 @@ std::vector<Row> processFiles(const std::vector<std::string>& filenames, char cs
                     nameId = nameIt->second;
                 }
 
-                const double value = parseFloat64(valueStart, valueEnd, decimalSeparator);
+                std::array<double, 7> values{};
+                const char* valueCurrent = valueStart;
+
+                for (int i = 0; i < 7; ++i) {
+                    const char* valuePartEnd = valueCurrent;
+
+                    while (valuePartEnd < valueEnd && *valuePartEnd != csvSeparator) {
+                        ++valuePartEnd;
+                    }
+
+                    values[i] = parseFloat64(valueCurrent, valuePartEnd, decimalSeparator);
+                    valueCurrent = valuePartEnd + 1;
+                }
+
                 const std::uint64_t key = (static_cast<std::uint64_t>(nameId) << 32) | static_cast<std::uint32_t>(date);
-                sums[key] += value;
+                auto& total = sums[key];
+                for (int i = 0; i < 7; ++i) total[i] += values[i];
             }
 
             carrySize = static_cast<std::size_t>(end - parseEnd);
