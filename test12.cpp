@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <array>
 #include <charconv>
 #include <chrono>
 #include <cmath>
@@ -23,7 +24,7 @@
 struct Row {
     std::string name;
     int date;
-    double value;
+    std::array<double, 7> values{};
 };
 
 int parseDate(const char* date) {
@@ -111,7 +112,7 @@ std::vector<Row> processFiles(const std::vector<std::string>& filenames, char cs
 
     std::deque<std::string> names;
     std::unordered_map<std::string_view, std::size_t> nameIds;
-    std::unordered_map<std::uint64_t, double> sums;
+    std::unordered_map<std::uint64_t, std::array<double, 7>> sums;
 
     const std::size_t chunkSize = 4 * 1024 * 1024;
 
@@ -246,19 +247,19 @@ std::vector<Row> processFiles(const std::vector<std::string>& filenames, char cs
 }
 
 void printRows(const std::vector<Row>& rows, char csvSeparator, char dateSeparator, const std::string& dateFormat) {
-    std::cout << "string" << csvSeparator << "date" << csvSeparator << "float64\n";
+    std::cout << "string" << csvSeparator << "date" << csvSeparator << "float64_1" << csvSeparator << "float64_2" << csvSeparator << "float64_3" << csvSeparator << "float64_4" << csvSeparator << "float64_5" << csvSeparator << "float64_6" << csvSeparator << "float64_7\n";
 
     for (const auto& row : rows) {
-        std::cout << row.name << csvSeparator << dateToString(row.date, dateSeparator, dateFormat) << csvSeparator << row.value << "\n";
+        std::cout << row.name << csvSeparator << dateToString(row.date, dateSeparator, dateFormat); for (double value : row.values) std::cout << csvSeparator << value; std::cout << "\n";
     }
 }
 
 void saveRows(const std::vector<Row>& rows, const std::string& outputFilename, char csvSeparator, char dateSeparator, const std::string& dateFormat) {
     std::ofstream outputFile(outputFilename);
-    outputFile << "string" << csvSeparator << "date" << csvSeparator << "float64\n";
+    outputFile << "string" << csvSeparator << "date" << csvSeparator << "float64_1" << csvSeparator << "float64_2" << csvSeparator << "float64_3" << csvSeparator << "float64_4" << csvSeparator << "float64_5" << csvSeparator << "float64_6" << csvSeparator << "float64_7\n";
 
     for (const auto& row : rows) {
-        outputFile << row.name << csvSeparator << dateToString(row.date, dateSeparator, dateFormat) << csvSeparator << row.value << "\n";
+        outputFile << row.name << csvSeparator << dateToString(row.date, dateSeparator, dateFormat); for (double value : row.values) outputFile << csvSeparator << value; outputFile << "\n";
     }
 }
 
