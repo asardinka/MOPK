@@ -9,7 +9,8 @@
 // Остальные этапы пайплайна не изменяются, поэтому разница во времени показывает
 // именно эффект от замены способа разбора CSV.
 
-#include <algorithm>\n#include <array>
+#include <algorithm>
+#include <array>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
