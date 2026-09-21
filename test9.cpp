@@ -57,7 +57,7 @@ const std::unordered_map<std::string_view, std::size_t> nameIds = {
 };
 
 struct Result {
-    std::array<std::array<double, 10>, 50> sums{};
+    std::array<std::array<std::array<double, 7>, 10>, 50> sums{};
     std::array<std::array<bool, 10>, 50> used{};
 };
 
@@ -123,25 +123,12 @@ Result parseFilterMergeFiles(std::vector<std::ifstream>& files, std::string_view
 
             const char* dateEnd = current;
             ++current;
-            const char* valueStart = current;
-
-            while (current < end && *current != '\n') {
-                ++current;
-            }
-
-            const char* valueEnd = current;
-
-            if (valueEnd > valueStart && *(valueEnd - 1) == '\r') {
-                --valueEnd;
-            }
-
-            if (current < end) {
-                ++current;
-            }
 
             std::string_view date(dateStart, dateEnd - dateStart);
 
             if (date < startDate || date > endDate) {
+                while (current < end && *current != '\n') ++current;
+                if (current < end) ++current;
                 continue;
             }
 
@@ -151,10 +138,26 @@ Result parseFilterMergeFiles(std::vector<std::ifstream>& files, std::string_view
             const int day = (dateStart[8] - '0') * 10 + (dateStart[9] - '0');
             const std::size_t dateId = day - 1;
 
-            double value;
-            std::from_chars(valueStart, valueEnd, value);
+            for (int i = 0; i < 7; ++i) {
+                const char* valueStart = current;
 
-            result.sums[nameId][dateId] += value;
+                while (current < end && *current != ',' && *current != '\n') {
+                    ++current;
+                }
+
+                const char* valueEnd = current;
+
+                if (i == 6 && valueEnd > valueStart && *(valueEnd - 1) == '\r') {
+                    --valueEnd;
+                }
+
+                double value;
+                std::from_chars(valueStart, valueEnd, value);
+                result.sums[nameId][dateId][i] += value;
+
+                if (current < end) ++current;
+            }
+
             result.used[nameId][dateId] = true;
         }
     }
@@ -163,12 +166,12 @@ Result parseFilterMergeFiles(std::vector<std::ifstream>& files, std::string_view
 }
 
 void printRows(const Result& result) {
-    std::cout << "string,date,float64\n";
+    std::cout << "string,date,float64_1,float64_2,float64_3,float64_4,float64_5,float64_6,float64_7\n";
 
     for (std::size_t nameId = 0; nameId < names.size(); ++nameId) {
         for (std::size_t dateId = 0; dateId < dates.size(); ++dateId) {
             if (result.used[nameId][dateId]) {
-                std::cout << names[nameId] << "," << dates[dateId] << "," << result.sums[nameId][dateId] << "\n";
+                std::cout << names[nameId] << "," << dates[dateId]; for (double value : result.sums[nameId][dateId]) std::cout << "," << value; std::cout << "\n";
             }
         }
     }
@@ -176,12 +179,12 @@ void printRows(const Result& result) {
 
 void saveRows(const Result& result, const std::string& outputFilename) {
     std::ofstream outputFile(outputFilename);
-    outputFile << "string,date,float64\n";
+    outputFile << "string,date,float64_1,float64_2,float64_3,float64_4,float64_5,float64_6,float64_7\n";
 
     for (std::size_t nameId = 0; nameId < names.size(); ++nameId) {
         for (std::size_t dateId = 0; dateId < dates.size(); ++dateId) {
             if (result.used[nameId][dateId]) {
-                outputFile << names[nameId] << "," << dates[dateId] << "," << result.sums[nameId][dateId] << "\n";
+                outputFile << names[nameId] << "," << dates[dateId]; for (double value : result.sums[nameId][dateId]) outputFile << "," << value; outputFile << "\n";
             }
         }
     }
@@ -228,17 +231,3 @@ int main() {
 // $Env:PATH += ";C:\\msys64\\ucrt64\\bin"
 // g++ -std=c++17 -O2 test9.cpp -o build/test9.exe && build/test9.exe
 
-// --- TIME ---
-// Open:                    0.5997 ms
-// Parse+Filter+Merge+Sort: 146.348 ms
-// Processing:              146.948 ms
-
-// --- TIME ---
-// Open:                    0.5838 ms
-// Parse+Filter+Merge+Sort: 74.8337 ms
-// Processing:              75.4176 ms
-
-// --- TIME ---
-// Open:                    0.7493 ms
-// Parse+Filter+Merge+Sort: 74.7423 ms
-// Processing:              75.4918 ms
