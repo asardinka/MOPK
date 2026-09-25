@@ -1,0 +1,1083 @@
+#include <algorithm>
+#include <array>
+#include <charconv>
+#include <chrono>
+#include <cmath>
+#include <cstdint>
+#include <cstring>
+#include <deque>
+#include <fstream>
+#include <iostream>
+#include <map>
+#include <sstream>
+#include <string>
+#include <string_view>
+#include <thread>
+#include <unordered_map>
+#include <vector>
+
+struct Row {
+    std::string name;
+    std::string date;
+    std::array<double, 7> values{};
+};
+
+int parseDate(const char* begin, const char* end, char dateSeparator) {
+    int parts[3] = {};
+    int part = 0;
+
+    for (const char* current = begin; current < end; ++current) {
+        if (*current == dateSeparator) {
+            ++part;
+        } else {
+            parts[part] = parts[part] * 10 + (*current - '0');
+        }
+    }
+
+    return parts[0] * 10000 + parts[1] * 100 + parts[2];
+}
+
+double parseFloatStod(std::string value, char decimalSeparator) {
+    if (decimalSeparator != '.') {
+        for (char& symbol : value) {
+            if (symbol == decimalSeparator) {
+                symbol = '.';
+            }
+        }
+    }
+
+    return std::stod(value);
+}
+
+double parseFloat64(const char* begin, const char* end, char decimalSeparator) {
+    if (decimalSeparator == '.') {
+        double value;
+        std::from_chars(begin, end, value);
+        return value;
+    }
+
+    bool negative = false;
+
+    if (begin < end && *begin == '-') {
+        negative = true;
+        ++begin;
+    }
+
+    double value = 0.0;
+
+    while (begin < end && *begin >= '0' && *begin <= '9') {
+        value = value * 10.0 + (*begin - '0');
+        ++begin;
+    }
+
+    if (begin < end && *begin == decimalSeparator) {
+        ++begin;
+        double factor = 0.1;
+
+        while (begin < end && *begin >= '0' && *begin <= '9') {
+            value += (*begin - '0') * factor;
+            factor *= 0.1;
+            ++begin;
+        }
+    }
+
+    if (begin < end && (*begin == 'e' || *begin == 'E')) {
+        ++begin;
+        bool exponentNegative = false;
+
+        if (begin < end && (*begin == '+' || *begin == '-')) {
+            exponentNegative = *begin == '-';
+            ++begin;
+        }
+
+        int exponent = 0;
+
+        while (begin < end && *begin >= '0' && *begin <= '9') {
+            exponent = exponent * 10 + (*begin - '0');
+            ++begin;
+        }
+
+        value *= std::pow(10.0, exponentNegative ? -exponent : exponent);
+    }
+
+    return negative ? -value : value;
+}
+
+std::string dateToString(int date, char dateSeparator) {
+    const int year = date / 10000;
+    const int month = date / 100 % 100;
+    const int day = date % 100;
+
+    std::string result = std::to_string(year);
+    result += dateSeparator;
+    result += month < 10 ? "0" + std::to_string(month) : std::to_string(month);
+    result += dateSeparator;
+    result += day < 10 ? "0" + std::to_string(day) : std::to_string(day);
+
+    return result;
+}
+
+void sortRows(std::vector<Row>& rows) {
+    std::sort(rows.begin(), rows.end(), [](const Row& left, const Row& right) {
+        if (left.name != right.name) {
+            return left.name < right.name;
+        }
+
+        return left.date < right.date;
+    });
+}
+
+std::vector<Row> mergeRows(const std::vector<Row>& rows) {
+    std::vector<Row> mergedRows;
+    std::unordered_map<std::string, std::size_t> positions;
+
+    for (const Row& row : rows) {
+        const std::string key = row.name + "|" + row.date;
+        auto it = positions.find(key);
+
+        if (it == positions.end()) {
+            positions[key] = mergedRows.size();
+            mergedRows.push_back(row);
+        } else {
+            for (int valueIndex = 0; valueIndex < 7; ++valueIndex) mergedRows[it->second].values[valueIndex] += row.values[valueIndex];
+        }
+    }
+
+    return mergedRows;
+}
+
+std::vector<Row> test1(const std::vector<std::string>& filenames, char csvSeparator, char dateSeparator, char decimalSeparator, const std::string& startDateText, const std::string& endDateText) {
+    std::vector<Row> rows;
+
+    for (const std::string& filename : filenames) {
+        std::ifstream file(filename);
+        std::string line;
+        std::getline(file, line);
+
+        while (std::getline(file, line)) {
+            std::stringstream stream(line);
+            std::string id;
+            std::string name;
+            std::string date;
+            std::array<double, 7> values{};
+
+            std::getline(stream, id, csvSeparator);
+            std::getline(stream, name, csvSeparator);
+            std::getline(stream, date, csvSeparator);
+
+            for (int valueIndex = 0; valueIndex < 7; ++valueIndex) {
+                std::string value;
+                std::getline(stream, value, valueIndex == 6 ? '\n' : csvSeparator);
+                values[valueIndex] = parseFloatStod(value, decimalSeparator);
+            }
+
+            rows.push_back({name, date, values});
+        }
+    }
+
+    const int startDate = parseDate(startDateText.data(), startDateText.data() + startDateText.size(), dateSeparator);
+    const int endDate = parseDate(endDateText.data(), endDateText.data() + endDateText.size(), dateSeparator);
+    std::vector<Row> filteredRows;
+
+    for (const Row& row : rows) {
+        const int date = parseDate(row.date.data(), row.date.data() + row.date.size(), dateSeparator);
+
+        if (date >= startDate && date <= endDate) {
+            filteredRows.push_back(row);
+        }
+    }
+
+    std::vector<Row> mergedRows = mergeRows(filteredRows);
+    sortRows(mergedRows);
+    return mergedRows;
+}
+
+std::vector<Row> test2(const std::vector<std::string>& filenames, char csvSeparator, char dateSeparator, char decimalSeparator, const std::string& startDateText, const std::string& endDateText) {
+    std::vector<Row> rows;
+
+    for (const std::string& filename : filenames) {
+        std::ifstream file(filename);
+        std::string line;
+        std::getline(file, line);
+
+        while (std::getline(file, line)) {
+            const std::size_t first = line.find(csvSeparator);
+            const std::size_t second = line.find(csvSeparator, first + 1);
+            const std::size_t third = line.find(csvSeparator, second + 1);
+
+            std::string name = line.substr(first + 1, second - first - 1);
+            std::string date = line.substr(second + 1, third - second - 1);
+            std::array<double, 7> values{};
+            std::size_t valueStart = third + 1;
+
+            for (int valueIndex = 0; valueIndex < 7; ++valueIndex) {
+                const std::size_t valueEnd = valueIndex == 6 ? line.size() : line.find(csvSeparator, valueStart);
+                values[valueIndex] = parseFloatStod(line.substr(valueStart, valueEnd - valueStart), decimalSeparator);
+                valueStart = valueEnd + 1;
+            }
+
+            rows.push_back({name, date, values});
+        }
+    }
+
+    const int startDate = parseDate(startDateText.data(), startDateText.data() + startDateText.size(), dateSeparator);
+    const int endDate = parseDate(endDateText.data(), endDateText.data() + endDateText.size(), dateSeparator);
+    std::vector<Row> filteredRows;
+
+    for (const Row& row : rows) {
+        const int date = parseDate(row.date.data(), row.date.data() + row.date.size(), dateSeparator);
+
+        if (date >= startDate && date <= endDate) {
+            filteredRows.push_back(row);
+        }
+    }
+
+    std::vector<Row> mergedRows = mergeRows(filteredRows);
+    sortRows(mergedRows);
+    return mergedRows;
+}
+
+std::vector<Row> test3(const std::vector<std::string>& filenames, char csvSeparator, char dateSeparator, char decimalSeparator, const std::string& startDateText, const std::string& endDateText) {
+    const int startDate = parseDate(startDateText.data(), startDateText.data() + startDateText.size(), dateSeparator);
+    const int endDate = parseDate(endDateText.data(), endDateText.data() + endDateText.size(), dateSeparator);
+    std::vector<Row> mergedRows;
+    std::unordered_map<std::string, std::size_t> positions;
+
+    for (const std::string& filename : filenames) {
+        std::ifstream file(filename);
+        std::string line;
+        std::getline(file, line);
+
+        while (std::getline(file, line)) {
+            const std::size_t first = line.find(csvSeparator);
+            const std::size_t second = line.find(csvSeparator, first + 1);
+            const std::size_t third = line.find(csvSeparator, second + 1);
+            const int dateNumber = parseDate(line.data() + second + 1, line.data() + third, dateSeparator);
+
+            if (dateNumber < startDate || dateNumber > endDate) {
+                continue;
+            }
+
+            std::string name = line.substr(first + 1, second - first - 1);
+            std::string date = line.substr(second + 1, third - second - 1);
+            std::array<double, 7> values{};
+            std::size_t valueStart = third + 1;
+
+            for (int valueIndex = 0; valueIndex < 7; ++valueIndex) {
+                const std::size_t valueEnd = valueIndex == 6 ? line.size() : line.find(csvSeparator, valueStart);
+                values[valueIndex] = parseFloatStod(line.substr(valueStart, valueEnd - valueStart), decimalSeparator);
+                valueStart = valueEnd + 1;
+            }
+
+            const std::string key = name + "|" + date;
+            auto it = positions.find(key);
+
+            if (it == positions.end()) {
+                positions[key] = mergedRows.size();
+                mergedRows.push_back({name, date, values});
+            } else {
+                for (int valueIndex = 0; valueIndex < 7; ++valueIndex) mergedRows[it->second].values[valueIndex] += values[valueIndex];
+            }
+        }
+    }
+
+    sortRows(mergedRows);
+    return mergedRows;
+}
+
+std::vector<Row> test4(const std::vector<std::string>& filenames, char csvSeparator, char dateSeparator, char decimalSeparator, const std::string& startDateText, const std::string& endDateText) {
+    const int startDate = parseDate(startDateText.data(), startDateText.data() + startDateText.size(), dateSeparator);
+    const int endDate = parseDate(endDateText.data(), endDateText.data() + endDateText.size(), dateSeparator);
+    std::vector<Row> mergedRows;
+    std::unordered_map<std::string, std::size_t> positions;
+
+    for (const std::string& filename : filenames) {
+        std::ifstream file(filename);
+        std::string line;
+        std::getline(file, line);
+
+        while (std::getline(file, line)) {
+            const std::size_t first = line.find(csvSeparator);
+            const std::size_t second = line.find(csvSeparator, first + 1);
+            const std::size_t third = line.find(csvSeparator, second + 1);
+            const int dateNumber = parseDate(line.data() + second + 1, line.data() + third, dateSeparator);
+
+            if (dateNumber < startDate || dateNumber > endDate) {
+                continue;
+            }
+
+            std::string name = line.substr(first + 1, second - first - 1);
+            std::string date = line.substr(second + 1, third - second - 1);
+            std::array<double, 7> values{};
+            const char* valueCurrent = line.data() + third + 1;
+            const char* lineEnd = line.data() + line.size();
+
+            for (int valueIndex = 0; valueIndex < 7; ++valueIndex) {
+                const char* valueEnd = valueCurrent;
+                while (valueEnd < lineEnd && *valueEnd != csvSeparator) ++valueEnd;
+                values[valueIndex] = parseFloat64(valueCurrent, valueEnd, decimalSeparator);
+                valueCurrent = valueEnd + 1;
+            }
+
+            const std::string key = name + "|" + date;
+            auto it = positions.find(key);
+
+            if (it == positions.end()) {
+                positions[key] = mergedRows.size();
+                mergedRows.push_back({name, date, values});
+            } else {
+                for (int valueIndex = 0; valueIndex < 7; ++valueIndex) mergedRows[it->second].values[valueIndex] += values[valueIndex];
+            }
+        }
+    }
+
+    sortRows(mergedRows);
+    return mergedRows;
+}
+
+std::vector<Row> test5(const std::vector<std::string>& filenames, char csvSeparator, char dateSeparator, char decimalSeparator, const std::string& startDateText, const std::string& endDateText) {
+    const int startDate = parseDate(startDateText.data(), startDateText.data() + startDateText.size(), dateSeparator);
+    const int endDate = parseDate(endDateText.data(), endDateText.data() + endDateText.size(), dateSeparator);
+    std::vector<Row> mergedRows;
+    std::deque<std::string> storedKeys;
+    std::unordered_map<std::string_view, std::size_t> positions;
+
+    for (const std::string& filename : filenames) {
+        std::ifstream file(filename);
+        std::string line;
+        std::getline(file, line);
+
+        while (std::getline(file, line)) {
+            const std::size_t first = line.find(csvSeparator);
+            const std::size_t second = line.find(csvSeparator, first + 1);
+            const std::size_t third = line.find(csvSeparator, second + 1);
+            const int dateNumber = parseDate(line.data() + second + 1, line.data() + third, dateSeparator);
+
+            if (dateNumber < startDate || dateNumber > endDate) {
+                continue;
+            }
+
+            std::string_view name(line.data() + first + 1, second - first - 1);
+            std::string_view date(line.data() + second + 1, third - second - 1);
+            std::string_view key(line.data() + first + 1, third - first - 1);
+            std::array<double, 7> values{};
+            const char* valueCurrent = line.data() + third + 1;
+            const char* lineEnd = line.data() + line.size();
+
+            for (int valueIndex = 0; valueIndex < 7; ++valueIndex) {
+                const char* valueEnd = valueCurrent;
+                while (valueEnd < lineEnd && *valueEnd != csvSeparator) ++valueEnd;
+                values[valueIndex] = parseFloat64(valueCurrent, valueEnd, decimalSeparator);
+                valueCurrent = valueEnd + 1;
+            }
+
+            auto it = positions.find(key);
+
+            if (it == positions.end()) {
+                storedKeys.emplace_back(key);
+                positions.emplace(std::string_view(storedKeys.back()), mergedRows.size());
+                mergedRows.push_back({std::string(name), std::string(date), values});
+            } else {
+                for (int valueIndex = 0; valueIndex < 7; ++valueIndex) mergedRows[it->second].values[valueIndex] += values[valueIndex];
+            }
+        }
+    }
+
+    sortRows(mergedRows);
+    return mergedRows;
+}
+
+std::vector<Row> test6(const std::vector<std::string>& filenames, char csvSeparator, char dateSeparator, char decimalSeparator, const std::string& startDateText, const std::string& endDateText) {
+    const int startDate = parseDate(startDateText.data(), startDateText.data() + startDateText.size(), dateSeparator);
+    const int endDate = parseDate(endDateText.data(), endDateText.data() + endDateText.size(), dateSeparator);
+    std::map<std::pair<std::string, std::string>, std::array<double, 7>> mergedRows;
+
+    for (const std::string& filename : filenames) {
+        std::ifstream file(filename);
+        std::string line;
+        std::getline(file, line);
+
+        while (std::getline(file, line)) {
+            const std::size_t first = line.find(csvSeparator);
+            const std::size_t second = line.find(csvSeparator, first + 1);
+            const std::size_t third = line.find(csvSeparator, second + 1);
+            const int dateNumber = parseDate(line.data() + second + 1, line.data() + third, dateSeparator);
+
+            if (dateNumber < startDate || dateNumber > endDate) {
+                continue;
+            }
+
+            std::string name = line.substr(first + 1, second - first - 1);
+            std::string date = line.substr(second + 1, third - second - 1);
+            std::array<double, 7> values{};
+            const char* valueCurrent = line.data() + third + 1;
+            const char* lineEnd = line.data() + line.size();
+
+            for (int valueIndex = 0; valueIndex < 7; ++valueIndex) {
+                const char* valueEnd = valueCurrent;
+                while (valueEnd < lineEnd && *valueEnd != csvSeparator) ++valueEnd;
+                values[valueIndex] = parseFloat64(valueCurrent, valueEnd, decimalSeparator);
+                valueCurrent = valueEnd + 1;
+            }
+
+            auto& total = mergedRows[{name, date}];
+            for (int valueIndex = 0; valueIndex < 7; ++valueIndex) total[valueIndex] += values[valueIndex];
+        }
+    }
+
+    std::vector<Row> rows;
+    rows.reserve(mergedRows.size());
+
+    for (const auto& item : mergedRows) {
+        rows.push_back({item.first.first, item.first.second, item.second});
+    }
+
+    return rows;
+}
+
+std::vector<Row> test7(const std::vector<std::string>& filenames, char csvSeparator, char dateSeparator, char decimalSeparator, const std::string& startDateText, const std::string& endDateText) {
+    const int startDate = parseDate(startDateText.data(), startDateText.data() + startDateText.size(), dateSeparator);
+    const int endDate = parseDate(endDateText.data(), endDateText.data() + endDateText.size(), dateSeparator);
+
+    std::deque<std::string> names;
+    std::unordered_map<std::string_view, std::size_t> nameIds;
+    std::vector<int> dates;
+    std::unordered_map<int, std::size_t> dateIds;
+    std::vector<std::vector<std::array<double, 7>>> sums;
+    std::vector<std::vector<bool>> used;
+
+    for (const std::string& filename : filenames) {
+        std::ifstream file(filename);
+        std::string line;
+        std::getline(file, line);
+
+        while (std::getline(file, line)) {
+            const std::size_t first = line.find(csvSeparator);
+            const std::size_t second = line.find(csvSeparator, first + 1);
+            const std::size_t third = line.find(csvSeparator, second + 1);
+            const int date = parseDate(line.data() + second + 1, line.data() + third, dateSeparator);
+
+            if (date < startDate || date > endDate) {
+                continue;
+            }
+
+            std::string_view name(line.data() + first + 1, second - first - 1);
+            auto nameIt = nameIds.find(name);
+            std::size_t nameId;
+
+            if (nameIt == nameIds.end()) {
+                nameId = names.size();
+                names.emplace_back(name);
+                nameIds.emplace(std::string_view(names.back()), nameId);
+                sums.emplace_back(dates.size(), std::array<double, 7>{});
+                used.emplace_back(dates.size(), false);
+            } else {
+                nameId = nameIt->second;
+            }
+
+            auto dateIt = dateIds.find(date);
+            std::size_t dateId;
+
+            if (dateIt == dateIds.end()) {
+                dateId = dates.size();
+                dates.push_back(date);
+                dateIds[date] = dateId;
+
+                for (std::vector<std::array<double, 7>>& row : sums) {
+                    row.push_back({});
+                }
+
+                for (std::vector<bool>& row : used) {
+                    row.push_back(false);
+                }
+            } else {
+                dateId = dateIt->second;
+            }
+
+            const char* valueCurrent = line.data() + third + 1;
+            const char* lineEnd = line.data() + line.size();
+
+            for (int valueIndex = 0; valueIndex < 7; ++valueIndex) {
+                const char* valueEnd = valueCurrent;
+                while (valueEnd < lineEnd && *valueEnd != csvSeparator) ++valueEnd;
+                sums[nameId][dateId][valueIndex] += parseFloat64(valueCurrent, valueEnd, decimalSeparator);
+                valueCurrent = valueEnd + 1;
+            }
+
+            used[nameId][dateId] = true;
+        }
+    }
+
+    std::vector<Row> rows;
+
+    for (std::size_t nameId = 0; nameId < names.size(); ++nameId) {
+        for (std::size_t dateId = 0; dateId < dates.size(); ++dateId) {
+            if (used[nameId][dateId]) {
+                rows.push_back({names[nameId], dateToString(dates[dateId], dateSeparator), sums[nameId][dateId]});
+            }
+        }
+    }
+
+    sortRows(rows);
+    return rows;
+}
+
+std::vector<Row> makeRowsFromNumericSums(const std::deque<std::string>& names, const std::unordered_map<std::uint64_t, std::array<double, 7>>& sums, char dateSeparator) {
+    std::vector<Row> rows;
+    rows.reserve(sums.size());
+
+    for (const auto& item : sums) {
+        const std::size_t nameId = static_cast<std::size_t>(item.first >> 32);
+        const int date = static_cast<int>(item.first & 0xffffffff);
+        rows.push_back({names[nameId], dateToString(date, dateSeparator), item.second});
+    }
+
+    sortRows(rows);
+    return rows;
+}
+
+std::vector<Row> test8(const std::vector<std::string>& filenames, char csvSeparator, char dateSeparator, char decimalSeparator, const std::string& startDateText, const std::string& endDateText) {
+    const int startDate = parseDate(startDateText.data(), startDateText.data() + startDateText.size(), dateSeparator);
+    const int endDate = parseDate(endDateText.data(), endDateText.data() + endDateText.size(), dateSeparator);
+
+    std::deque<std::string> names;
+    std::unordered_map<std::string_view, std::size_t> nameIds;
+    std::unordered_map<std::uint64_t, std::array<double, 7>> sums;
+
+    for (const std::string& filename : filenames) {
+        std::ifstream file(filename);
+        std::string line;
+        std::getline(file, line);
+
+        while (std::getline(file, line)) {
+            const std::size_t first = line.find(csvSeparator);
+            const std::size_t second = line.find(csvSeparator, first + 1);
+            const std::size_t third = line.find(csvSeparator, second + 1);
+            const int date = parseDate(line.data() + second + 1, line.data() + third, dateSeparator);
+
+            if (date < startDate || date > endDate) {
+                continue;
+            }
+
+            std::string_view name(line.data() + first + 1, second - first - 1);
+            auto nameIt = nameIds.find(name);
+            std::size_t nameId;
+
+            if (nameIt == nameIds.end()) {
+                nameId = names.size();
+                names.emplace_back(name);
+                nameIds.emplace(std::string_view(names.back()), nameId);
+            } else {
+                nameId = nameIt->second;
+            }
+
+            std::array<double, 7> values{};
+            const char* valueCurrent = line.data() + third + 1;
+            const char* lineEnd = line.data() + line.size();
+
+            for (int valueIndex = 0; valueIndex < 7; ++valueIndex) {
+                const char* valueEnd = valueCurrent;
+                while (valueEnd < lineEnd && *valueEnd != csvSeparator) ++valueEnd;
+                values[valueIndex] = parseFloat64(valueCurrent, valueEnd, decimalSeparator);
+                valueCurrent = valueEnd + 1;
+            }
+
+            const std::uint64_t key = (static_cast<std::uint64_t>(nameId) << 32) | static_cast<std::uint32_t>(date);
+            auto& total = sums[key];
+            for (int valueIndex = 0; valueIndex < 7; ++valueIndex) total[valueIndex] += values[valueIndex];
+        }
+    }
+
+    return makeRowsFromNumericSums(names, sums, dateSeparator);
+}
+
+std::vector<Row> test9(const std::vector<std::string>& filenames, char csvSeparator, char dateSeparator, char decimalSeparator, const std::string& startDateText, const std::string& endDateText) {
+    const int startDate = parseDate(startDateText.data(), startDateText.data() + startDateText.size(), dateSeparator);
+    const int endDate = parseDate(endDateText.data(), endDateText.data() + endDateText.size(), dateSeparator);
+
+    std::deque<std::string> names;
+    std::unordered_map<std::string_view, std::size_t> nameIds;
+    std::unordered_map<std::uint64_t, std::array<double, 7>> sums;
+
+    for (const std::string& filename : filenames) {
+        std::ifstream file(filename, std::ios::binary);
+        file.seekg(0, std::ios::end);
+        const std::size_t fileSize = static_cast<std::size_t>(file.tellg());
+        file.seekg(0, std::ios::beg);
+
+        std::vector<char> buffer(fileSize);
+        file.read(buffer.data(), fileSize);
+
+        const char* current = buffer.data();
+        const char* end = buffer.data() + buffer.size();
+
+        while (current < end && *current != '\n') {
+            ++current;
+        }
+
+        if (current < end) {
+            ++current;
+        }
+
+        while (current < end) {
+            while (current < end && *current != csvSeparator) {
+                ++current;
+            }
+
+            if (current >= end) {
+                break;
+            }
+
+            ++current;
+            const char* nameStart = current;
+
+            while (current < end && *current != csvSeparator) {
+                ++current;
+            }
+
+            const char* nameEnd = current;
+            ++current;
+            const char* dateStart = current;
+
+            while (current < end && *current != csvSeparator) {
+                ++current;
+            }
+
+            const char* dateEnd = current;
+            ++current;
+            const char* valueStart = current;
+
+            while (current < end && *current != '\n') {
+                ++current;
+            }
+
+            const char* valueEnd = current;
+
+            if (valueEnd > valueStart && *(valueEnd - 1) == '\r') {
+                --valueEnd;
+            }
+
+            if (current < end) {
+                ++current;
+            }
+
+            const int date = parseDate(dateStart, dateEnd, dateSeparator);
+
+            if (date < startDate || date > endDate) {
+                continue;
+            }
+
+            std::string_view name(nameStart, nameEnd - nameStart);
+            auto nameIt = nameIds.find(name);
+            std::size_t nameId;
+
+            if (nameIt == nameIds.end()) {
+                nameId = names.size();
+                names.emplace_back(name);
+                nameIds.emplace(std::string_view(names.back()), nameId);
+            } else {
+                nameId = nameIt->second;
+            }
+
+            std::array<double, 7> values{};
+            const char* valueCurrent = valueStart;
+
+            for (int valueIndex = 0; valueIndex < 7; ++valueIndex) {
+                const char* valuePartEnd = valueCurrent;
+                while (valuePartEnd < valueEnd && *valuePartEnd != csvSeparator) ++valuePartEnd;
+                values[valueIndex] = parseFloat64(valueCurrent, valuePartEnd, decimalSeparator);
+                valueCurrent = valuePartEnd + 1;
+            }
+
+            const std::uint64_t key = (static_cast<std::uint64_t>(nameId) << 32) | static_cast<std::uint32_t>(date);
+            auto& total = sums[key];
+            for (int valueIndex = 0; valueIndex < 7; ++valueIndex) total[valueIndex] += values[valueIndex];
+        }
+    }
+
+    return makeRowsFromNumericSums(names, sums, dateSeparator);
+}
+
+
+int parseDateFixedYMD(const char* date) {
+    const int year = (date[0] - '0') * 1000 + (date[1] - '0') * 100 + (date[2] - '0') * 10 + (date[3] - '0');
+    const int month = (date[5] - '0') * 10 + (date[6] - '0');
+    const int day = (date[8] - '0') * 10 + (date[9] - '0');
+    return year * 10000 + month * 100 + day;
+}
+
+std::vector<Row> test11(const std::vector<std::string>& filenames, char csvSeparator, char dateSeparator, char decimalSeparator, const std::string& startDateText, const std::string& endDateText) {
+    const int startDate = parseDateFixedYMD(startDateText.data());
+    const int endDate = parseDateFixedYMD(endDateText.data());
+    std::deque<std::string> names;
+    std::unordered_map<std::string_view, std::size_t> nameIds;
+    std::unordered_map<std::uint64_t, std::array<double, 7>> sums;
+
+    for (const std::string& filename : filenames) {
+        std::ifstream file(filename, std::ios::binary);
+        file.seekg(0, std::ios::end);
+        const std::size_t fileSize = static_cast<std::size_t>(file.tellg());
+        file.seekg(0, std::ios::beg);
+
+        std::vector<char> buffer(fileSize);
+        file.read(buffer.data(), fileSize);
+
+        const char* current = buffer.data();
+        const char* end = buffer.data() + buffer.size();
+
+        while (current < end && *current != '\n') ++current;
+        if (current < end) ++current;
+
+        while (current < end) {
+            while (current < end && *current != csvSeparator) ++current;
+            if (current >= end) break;
+
+            ++current;
+            const char* nameStart = current;
+            while (current < end && *current != csvSeparator) ++current;
+            const char* nameEnd = current;
+
+            ++current;
+            const char* dateStart = current;
+            while (current < end && *current != csvSeparator) ++current;
+
+            ++current;
+            const char* valueStart = current;
+            while (current < end && *current != '\n') ++current;
+            const char* valueEnd = current;
+            if (valueEnd > valueStart && *(valueEnd - 1) == '\r') --valueEnd;
+            if (current < end) ++current;
+
+            const int date = parseDateFixedYMD(dateStart);
+            if (date < startDate || date > endDate) continue;
+
+            const std::string_view name(nameStart, nameEnd - nameStart);
+            auto nameIt = nameIds.find(name);
+            std::size_t nameId;
+
+            if (nameIt == nameIds.end()) {
+                nameId = names.size();
+                names.emplace_back(name);
+                nameIds.emplace(std::string_view(names.back()), nameId);
+            } else {
+                nameId = nameIt->second;
+            }
+
+            std::array<double, 7> values{};
+            const char* valueCurrent = valueStart;
+
+            for (int valueIndex = 0; valueIndex < 7; ++valueIndex) {
+                const char* valuePartEnd = valueCurrent;
+                while (valuePartEnd < valueEnd && *valuePartEnd != csvSeparator) ++valuePartEnd;
+                values[valueIndex] = parseFloat64(valueCurrent, valuePartEnd, decimalSeparator);
+                valueCurrent = valuePartEnd + 1;
+            }
+
+            const std::uint64_t key = (static_cast<std::uint64_t>(nameId) << 32) | static_cast<std::uint32_t>(date);
+            auto& total = sums[key];
+            for (int valueIndex = 0; valueIndex < 7; ++valueIndex) total[valueIndex] += values[valueIndex];
+        }
+    }
+
+    return makeRowsFromNumericSums(names, sums, dateSeparator);
+}
+
+std::vector<Row> processChunkFile(const std::string& filename, char csvSeparator, char dateSeparator, char decimalSeparator, int startDate, int endDate) {
+    std::deque<std::string> names;
+    std::unordered_map<std::string_view, std::size_t> nameIds;
+    std::unordered_map<std::uint64_t, std::array<double, 7>> sums;
+    const std::size_t chunkSize = 4 * 1024 * 1024;
+
+    std::ifstream file(filename, std::ios::binary);
+    std::vector<char> buffer(chunkSize * 2);
+    std::size_t carrySize = 0;
+    bool firstChunk = true;
+
+    while (file) {
+        file.read(buffer.data() + carrySize, chunkSize);
+        const std::size_t bytesRead = static_cast<std::size_t>(file.gcount());
+        const std::size_t dataSize = carrySize + bytesRead;
+
+        if (dataSize == 0) break;
+
+        const char* end = buffer.data() + dataSize;
+        const char* parseEnd = end;
+
+        if (!file.eof()) {
+            while (parseEnd > buffer.data() && *(parseEnd - 1) != '\n') --parseEnd;
+        }
+
+        const char* current = buffer.data();
+
+        if (firstChunk) {
+            while (current < parseEnd && *current != '\n') ++current;
+            if (current < parseEnd) ++current;
+            firstChunk = false;
+        }
+
+        while (current < parseEnd) {
+            while (current < parseEnd && *current != csvSeparator) ++current;
+            if (current >= parseEnd) break;
+
+            ++current;
+            const char* nameStart = current;
+            while (current < parseEnd && *current != csvSeparator) ++current;
+            const char* nameEnd = current;
+
+            ++current;
+            const char* dateStart = current;
+            while (current < parseEnd && *current != csvSeparator) ++current;
+
+            ++current;
+            const char* valueStart = current;
+            while (current < parseEnd && *current != '\n') ++current;
+            const char* valueEnd = current;
+            if (valueEnd > valueStart && *(valueEnd - 1) == '\r') --valueEnd;
+            if (current < parseEnd) ++current;
+
+            const int date = parseDateFixedYMD(dateStart);
+            if (date < startDate || date > endDate) continue;
+
+            const std::string_view name(nameStart, nameEnd - nameStart);
+            auto nameIt = nameIds.find(name);
+            std::size_t nameId;
+
+            if (nameIt == nameIds.end()) {
+                nameId = names.size();
+                names.emplace_back(name);
+                nameIds.emplace(std::string_view(names.back()), nameId);
+            } else {
+                nameId = nameIt->second;
+            }
+
+            std::array<double, 7> values{};
+            const char* valueCurrent = valueStart;
+
+            for (int valueIndex = 0; valueIndex < 7; ++valueIndex) {
+                const char* valuePartEnd = valueCurrent;
+                while (valuePartEnd < valueEnd && *valuePartEnd != csvSeparator) ++valuePartEnd;
+                values[valueIndex] = parseFloat64(valueCurrent, valuePartEnd, decimalSeparator);
+                valueCurrent = valuePartEnd + 1;
+            }
+
+            const std::uint64_t key = (static_cast<std::uint64_t>(nameId) << 32) | static_cast<std::uint32_t>(date);
+            auto& total = sums[key];
+            for (int valueIndex = 0; valueIndex < 7; ++valueIndex) total[valueIndex] += values[valueIndex];
+        }
+
+        carrySize = static_cast<std::size_t>(end - parseEnd);
+        if (carrySize > 0) std::memmove(buffer.data(), parseEnd, carrySize);
+    }
+
+    return makeRowsFromNumericSums(names, sums, dateSeparator);
+}
+
+std::vector<Row> mergeSortedRows(const std::vector<Row>& left, const std::vector<Row>& right) {
+    std::vector<Row> rows;
+    rows.reserve(left.size() + right.size());
+
+    std::size_t i = 0;
+    std::size_t j = 0;
+
+    while (i < left.size() && j < right.size()) {
+        if (left[i].name < right[j].name || (left[i].name == right[j].name && left[i].date < right[j].date)) {
+            rows.push_back(left[i]);
+            ++i;
+        } else if (right[j].name < left[i].name || (right[j].name == left[i].name && right[j].date < left[i].date)) {
+            rows.push_back(right[j]);
+            ++j;
+        } else {
+            Row row = left[i];
+            for (int valueIndex = 0; valueIndex < 7; ++valueIndex) row.values[valueIndex] += right[j].values[valueIndex];
+            rows.push_back(row);
+            ++i;
+            ++j;
+        }
+    }
+
+    while (i < left.size()) rows.push_back(left[i++]);
+    while (j < right.size()) rows.push_back(right[j++]);
+    return rows;
+}
+
+std::vector<Row> test12(const std::vector<std::string>& filenames, char csvSeparator, char dateSeparator, char decimalSeparator, const std::string& startDateText, const std::string& endDateText) {
+    const int startDate = parseDateFixedYMD(startDateText.data());
+    const int endDate = parseDateFixedYMD(endDateText.data());
+    std::vector<Row> rows;
+
+    for (const std::string& filename : filenames) {
+        std::vector<Row> fileRows = processChunkFile(filename, csvSeparator, dateSeparator, decimalSeparator, startDate, endDate);
+        rows = mergeSortedRows(rows, fileRows);
+    }
+
+    return rows;
+}
+
+std::vector<Row> test13(const std::vector<std::string>& filenames, char csvSeparator, char dateSeparator, char decimalSeparator, const std::string& startDateText, const std::string& endDateText) {
+    const int startDate = parseDateFixedYMD(startDateText.data());
+    const int endDate = parseDateFixedYMD(endDateText.data());
+    std::vector<std::vector<Row>> results(filenames.size());
+    std::vector<std::thread> threads;
+    threads.reserve(filenames.size());
+
+    for (std::size_t i = 0; i < filenames.size(); ++i) {
+        threads.emplace_back([&, i]() {
+            results[i] = processChunkFile(filenames[i], csvSeparator, dateSeparator, decimalSeparator, startDate, endDate);
+        });
+    }
+
+    for (std::thread& thread : threads) thread.join();
+
+    std::vector<Row> rows;
+
+    for (const std::vector<Row>& result : results) {
+        rows = mergeSortedRows(rows, result);
+    }
+
+    return rows;
+}
+
+bool sameRows(const std::vector<Row>& left, const std::vector<Row>& right) {
+    if (left.size() != right.size()) {
+        return false;
+    }
+
+    for (std::size_t i = 0; i < left.size(); ++i) {
+        if (left[i].name != right[i].name || left[i].date != right[i].date) {
+            return false;
+        }
+
+        for (int valueIndex = 0; valueIndex < 7; ++valueIndex) {
+            const double scale = std::max({1.0, std::abs(left[i].values[valueIndex]), std::abs(right[i].values[valueIndex])});
+
+            if (std::abs(left[i].values[valueIndex] - right[i].values[valueIndex]) > 1e-9 * scale) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+std::string valueToString(double value, char decimalSeparator) {
+    char buffer[64];
+    const auto result = std::to_chars(buffer, buffer + sizeof(buffer), value);
+    std::string text(buffer, result.ptr);
+
+    if (decimalSeparator != '.') {
+        for (char& symbol : text) {
+            if (symbol == '.') {
+                symbol = decimalSeparator;
+            }
+        }
+    }
+
+    return text;
+}
+
+void printRows(const std::vector<Row>& rows, char csvSeparator, char decimalSeparator) {
+    std::cout << "string" << csvSeparator << "date" << csvSeparator << "float64_1" << csvSeparator << "float64_2" << csvSeparator << "float64_3" << csvSeparator << "float64_4" << csvSeparator << "float64_5" << csvSeparator << "float64_6" << csvSeparator << "float64_7\n";
+
+    for (const Row& row : rows) {
+        std::cout << row.name << csvSeparator << row.date; for (double value : row.values) std::cout << csvSeparator << valueToString(value, decimalSeparator); std::cout << "\n";
+    }
+}
+
+void saveRows(const std::vector<Row>& rows, const std::string& outputFilename, char csvSeparator, char decimalSeparator) {
+    std::ofstream outputFile(outputFilename);
+    outputFile << "string" << csvSeparator << "date" << csvSeparator << "float64_1" << csvSeparator << "float64_2" << csvSeparator << "float64_3" << csvSeparator << "float64_4" << csvSeparator << "float64_5" << csvSeparator << "float64_6" << csvSeparator << "float64_7\n";
+
+    for (const Row& row : rows) {
+        outputFile << row.name << csvSeparator << row.date; for (double value : row.values) outputFile << csvSeparator << valueToString(value, decimalSeparator); outputFile << "\n";
+    }
+}
+
+int main() {
+    using Clock = std::chrono::steady_clock;
+
+    const std::vector<std::string> filenames = {"data/data1.csv", "data/data2.csv"};
+    const char csvSeparator = ',';
+    const char dateSeparator = '-';
+    const char decimalSeparator = '.';
+    const std::string startDate = "2026-11-01";
+    const std::string endDate = "2026-11-10";
+
+    using TestFunction = std::vector<Row> (*)(const std::vector<std::string>&, char, char, char, const std::string&, const std::string&);
+
+    struct Test {
+        const char* name;
+        TestFunction function;
+    };
+
+    const Test tests[] = {
+        {"test1", test1},
+        {"test2", test2},
+        {"test3", test3},
+        {"test4", test4},
+        {"test5", test5},
+        {"test6", test6},
+        {"test7", test7},
+        {"test8", test8},
+        {"test9", test9},
+        {"test11", test11},
+        {"test12", test12},
+        {"test13", test13}
+    };
+
+    if (csvSeparator == dateSeparator) {
+        std::cout << "CSV separator and date separator must be different.\n";
+        return 1;
+    }
+
+    struct BenchmarkResult {
+        const char* name;
+        double processingMs;
+        bool correct;
+    };
+
+    std::vector<BenchmarkResult> benchmarkResults;
+    std::vector<Row> referenceRows;
+    std::vector<Row> finalRows;
+    bool referenceSet = false;
+    double bestTime = 0.0;
+    const char* bestTest = nullptr;
+
+    for (const Test& test : tests) {
+        const auto start = Clock::now();
+        std::vector<Row> rows = test.function(filenames, csvSeparator, dateSeparator, decimalSeparator, startDate, endDate);
+        const auto end = Clock::now();
+
+        const double processingMs = std::chrono::duration<double, std::milli>(end - start).count();
+
+        if (!referenceSet) {
+            referenceRows = rows;
+            referenceSet = true;
+        }
+
+        const bool correct = sameRows(referenceRows, rows);
+        benchmarkResults.push_back({test.name, processingMs, correct});
+
+        if (bestTest == nullptr || processingMs < bestTime) {
+            bestTime = processingMs;
+            bestTest = test.name;
+        }
+
+        finalRows = std::move(rows);
+    }
+
+    printRows(finalRows, csvSeparator, decimalSeparator);
+    saveRows(finalRows, "data/merged.csv", csvSeparator, decimalSeparator);
+
+    std::cout << "\n--- BIG TEST ---\n";
+
+    for (const BenchmarkResult& result : benchmarkResults) {
+        std::cout << result.name << ": " << result.processingMs << " ms | " << (result.correct ? "OK" : "DIFFERENT RESULT") << "\n";
+    }
+
+    std::cout << "Fastest: " << bestTest << " | " << bestTime << " ms\n";
+
+    return 0;
+}
+
+// $Env:PATH += ";C:\\msys64\\ucrt64\\bin"
+// g++ -std=c++17 -O2 bigTest.cpp -o build/bigTest.exe && build/bigTest.exe

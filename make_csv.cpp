@@ -4,44 +4,82 @@
 #include <random>
 #include <vector>
 
+std::vector<std::string> generateDates() {
+    std::vector<std::string> dates;
+    dates.reserve(103);
+
+    for (int month = 9; month <= 12; ++month) {
+        int lastDay = 0;
+
+        switch (month) {
+            case 9:
+            case 11:
+                lastDay = 30;
+                break;
+            case 10:
+                lastDay = 31;
+                break;
+            case 12:
+                lastDay = 12;
+                break;
+        }
+
+        for (int day = 1; day <= lastDay; ++day) {
+            const std::string monthStr =
+                (month < 10 ? "0" : "") + std::to_string(month);
+            const std::string dayStr =
+                (day < 10 ? "0" : "") + std::to_string(day);
+
+            dates.push_back("2026-" + monthStr + "-" + dayStr);
+        }
+    }
+
+    return dates;
+}
+
 bool generateCSV(const std::string& filename, int rowCount, std::mt19937& rng) {
     std::ofstream outFile;
 
     std::vector<char> writeBuffer(64 * 1024);
     outFile.rdbuf()->pubsetbuf(writeBuffer.data(), writeBuffer.size());
-    
+
     outFile.open(filename);
     if (!outFile.is_open()) {
         std::cerr << "ERROR: " << filename << "\n";
         return false;
     }
 
-    outFile << "id,string,data,float64\n";
+    outFile << "id,string,data,float64_1,float64_2,float64_3,float64_4,float64_5,float64_6,float64_7\n";
 
     const std::vector<std::string> names = {
-        "Alexander", "Dmitry", "Elena", "Maria", "Ivan", 
-        "Anna", "Sergey", "Olga", "Maxim", "Natalia"
+        "Alexander", "Dmitry", "Elena", "Maria", "Ivan",
+        "Anna", "Sergey", "Olga", "Maxim", "Natalia",
+        "Alexey", "Andrey", "Anton", "Artem", "Boris",
+        "Victor", "Vladimir", "Denis", "Evgeny", "Kirill",
+        "Mikhail", "Nikolay", "Oleg", "Pavel", "Roman",
+        "Stanislav", "Yuri", "Alina", "Anastasia", "Daria",
+        "Ekaterina", "Irina", "Ksenia", "Marina", "Nadezhda",
+        "Polina", "Sofia", "Tatiana", "Yulia", "Victoria",
+        "Grigory", "Ilya", "Konstantin", "Leonid", "Matvey",
+        "Nikita", "Petr", "Ruslan", "Svetlana", "Vera"
     };
 
-    const std::vector<std::string> dates = {
-        "2026-11-01", "2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05",
-        "2026-11-06", "2026-11-07", "2026-11-08", "2026-11-09", "2026-11-10",
-        "2026-11-11", "2026-11-12", "2026-11-13", "2026-11-14", "2026-11-15",
-        "2026-11-16", "2026-11-17", "2026-11-18", "2026-11-19", "2026-11-20",
-        "2026-11-21", "2026-11-22", "2026-11-23", "2026-11-24", "2026-11-25",
-        "2026-11-26", "2026-11-27", "2026-11-28", "2026-11-29", "2026-11-30"
-    };
+    const std::vector<std::string> dates = generateDates();
 
     std::uniform_int_distribution<size_t> nameDist(0, names.size() - 1);
     std::uniform_int_distribution<size_t> dateDist(0, dates.size() - 1);
-    std::uniform_real_distribution<double> doubleDist(0.0, 1000.0);
+    std::uniform_real_distribution<double> doubleDist(0.0, 1.0);
 
     for (int i = 1; i <= rowCount; ++i) {
         const std::string& randomName = names[nameDist(rng)];
-        const std::string& randomDate = dates[dateDist(rng)]; // ИСПРАВЛЕНО: теперь используется dateDist
-        double randomFloat = doubleDist(rng);
+        const std::string& randomDate = dates[dateDist(rng)];
+        outFile << i << "," << randomName << "," << randomDate;
 
-        outFile << i << "," << randomName << "," << randomDate << "," << randomFloat << "\n";
+        for (int valueIndex = 0; valueIndex < 7; ++valueIndex) {
+            outFile << "," << doubleDist(rng);
+        }
+
+        outFile << "\n";
     }
 
     outFile.close();
@@ -52,8 +90,16 @@ int main() {
     std::mt19937 rng(std::random_device{}());
     const int rowCount = 1000000;
 
-    generateCSV("data1.csv", rowCount, rng);
-    generateCSV("data2.csv", rowCount, rng);
+    if (!generateCSV("data/data1.csv", rowCount, rng)) {
+        return 1;
+    }
+
+    if (!generateCSV("data/data2.csv", rowCount, rng)) {
+        return 1;
+    }
 
     return 0;
 }
+
+// $Env:PATH += ";C:\msys64\ucrt64\bin"
+// g++ -std=c++17 make_csv.cpp -o build/make_csv.exe && build/make_csv.exe
